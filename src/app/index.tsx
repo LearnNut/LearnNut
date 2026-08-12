@@ -35,9 +35,9 @@ export default function WelcomeScreen() {
 
         <View style={styles.actions}>
           <Pressable
-            accessibilityHint="Opens the LearnNut home screen"
+            accessibilityHint="Opens the four-step LearnNut onboarding"
             accessibilityRole="button"
-            onPress={() => router.navigate('/home')}
+            onPress={() => router.navigate('/onboarding')}
             style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}>
             <Text style={styles.primaryButtonLabel}>Get started</Text>
           </Pressable>
