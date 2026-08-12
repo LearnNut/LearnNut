@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "LearnNut",
+    "slug": "learnnut",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "learnnut",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#352242",
+    "ios": {
+      "icon": "./assets/images/learnnut-icon.png",
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#352242",
+        "foregroundImage": "./assets/images/learnnut-icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/learnnut-icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#352242",
+          "image": "./assets/images/learnnut-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
