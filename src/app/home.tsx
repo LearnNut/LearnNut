@@ -14,7 +14,7 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
-            <View>
+            <View style={styles.headerCopy}>
               <Text style={styles.eyebrow}>LEARNNUT</Text>
               <Text accessibilityRole="header" style={styles.title}>
                 What are we cracking today?
@@ -38,6 +38,13 @@ export default function HomeScreen() {
               onPress={() => router.push('/add-source')}
               style={({ pressed }) => [styles.addButton, pressed && styles.buttonPressed]}>
               <Text style={styles.addButtonLabel}>＋ Add your first source</Text>
+            </Pressable>
+            <Pressable
+              accessibilityHint="Opens sources saved on this device"
+              accessibilityRole="button"
+              onPress={() => router.push('/library')}
+              style={({ pressed }) => [styles.libraryButton, pressed && styles.buttonPressed]}>
+              <Text style={styles.libraryButtonLabel}>Open Library</Text>
             </Pressable>
           </View>
 
@@ -87,6 +94,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 16,
+  },
+  headerCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   eyebrow: {
     color: Brand.colors.walnut,
@@ -163,6 +174,20 @@ const styles = StyleSheet.create({
   },
   addButtonLabel: {
     color: Brand.colors.plum,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  libraryButton: {
+    minHeight: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: 'rgba(249, 233, 208, 0.5)',
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+  },
+  libraryButtonLabel: {
+    color: Brand.colors.cream,
     fontSize: 16,
     fontWeight: '800',
   },

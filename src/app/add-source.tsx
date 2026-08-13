@@ -1,8 +1,9 @@
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
+  BackHandler,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -17,11 +18,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
+import { isValidSourceUrl, saveSource, SOURCE_LIMITS } from '@/services/source-storage';
 
 const stepContent = [
   {
     eyebrow: 'ADD A LINK',
-    description: 'Paste a video or webpage URL. We’ll keep it on this device for this preview.',
+    description: 'Paste a video or webpage URL. You can review it before saving it on this device.',
   },
   {
     eyebrow: 'LABEL IT',
@@ -29,53 +31,51 @@ const stepContent = [
   },
   {
     eyebrow: 'LOCAL PREVIEW',
-    description: 'Check the details below. Nothing has been uploaded, processed or saved.',
+    description: 'Check the details below, then save this source to your Library on this device.',
   },
 ] as const;
 
 type Step = 0 | 1 | 2;
 
-function isValidHttpUrl(value: string) {
-  const trimmedValue = value.trim();
-
-  if (!/^https?:\/\//i.test(trimmedValue)) {
-    return false;
-  }
-
-  try {
-    const parsedUrl = new URL(trimmedValue);
-
-    return (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') && Boolean(parsedUrl.hostname);
-  } catch {
-    return false;
-  }
-}
-
 export default function AddSourceScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const scrollViewRef = useRef<ScrollView>(null);
+  const isSavingRef = useRef(false);
   const [step, setStep] = useState<Step>(0);
   const [sourceUrl, setSourceUrl] = useState('');
   const [hasUrlBeenEdited, setHasUrlBeenEdited] = useState(false);
   const [hasUrlBeenBlurred, setHasUrlBeenBlurred] = useState(false);
   const [sourceLabel, setSourceLabel] = useState('');
   const [folderName, setFolderName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const isNarrow = width < 390;
   const currentContent = stepContent[step];
   const trimmedUrl = sourceUrl.trim();
   const trimmedLabel = sourceLabel.trim();
   const trimmedFolder = folderName.trim();
-  const isUrlValid = isValidHttpUrl(trimmedUrl);
+  const isUrlValid = isValidSourceUrl(trimmedUrl);
   const isLabelValid = trimmedLabel.length > 0;
   const canContinue = step === 0 ? isUrlValid : step === 1 ? isLabelValid : true;
+  const isActionDisabled = !canContinue || isSaving;
   const showUrlError = hasUrlBeenEdited && hasUrlBeenBlurred && !isUrlValid;
 
   useEffect(() => {
     scrollViewRef.current?.scrollTo({ animated: false, y: 0 });
     AccessibilityInfo.announceForAccessibility(`Add Source, step ${step + 1} of ${stepContent.length}`);
   }, [step]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !isSaving) {
+      return;
+    }
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => true);
+
+    return () => backHandler.remove();
+  }, [isSaving]);
 
   const returnHome = () => {
     Keyboard.dismiss();
@@ -89,7 +89,12 @@ export default function AddSourceScreen() {
   };
 
   const goBack = () => {
+    if (isSavingRef.current) {
+      return;
+    }
+
     Keyboard.dismiss();
+    setSaveError(null);
 
     if (step === 0) {
       returnHome();
@@ -115,12 +120,39 @@ export default function AddSourceScreen() {
     if (step === 1) {
       setSourceLabel(trimmedLabel);
       setFolderName(trimmedFolder);
+      setSaveError(null);
       setStep(2);
     }
   };
 
+  const saveCurrentSource = async () => {
+    if (isSavingRef.current) {
+      return;
+    }
+
+    isSavingRef.current = true;
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      await saveSource({
+        url: trimmedUrl,
+        label: trimmedLabel,
+        ...(trimmedFolder ? { folder: trimmedFolder } : {}),
+      });
+    } catch {
+      isSavingRef.current = false;
+      setIsSaving(false);
+      setSaveError('We couldn’t save this source just yet. Please try again.');
+      return;
+    }
+
+    router.dismissTo('/library');
+  };
+
   return (
     <View style={styles.screen}>
+      <Stack.Screen options={{ gestureEnabled: !isSaving }} />
       <StatusBar style="light" />
       <View pointerEvents="none" style={[styles.glow, styles.glowTop]} />
       <View pointerEvents="none" style={[styles.glow, styles.glowBottom]} />
@@ -133,11 +165,19 @@ export default function AddSourceScreen() {
             <View style={styles.shell}>
               <View style={styles.topRow}>
                 <Pressable
-                  accessibilityHint={step === 0 ? 'Returns to Home' : `Returns to Add Source step ${step}`}
+                  accessibilityHint={
+                    step === 0 ? 'Returns to the previous screen' : `Returns to Add Source step ${step}`
+                  }
                   accessibilityLabel="Back"
                   accessibilityRole="button"
+                  accessibilityState={{ disabled: isSaving }}
+                  disabled={isSaving}
                   onPress={goBack}
-                  style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}>
+                  style={({ pressed }) => [
+                    styles.backButton,
+                    isSaving && styles.backButtonDisabled,
+                    pressed && !isSaving && styles.buttonPressed,
+                  ]}>
                   <Text aria-hidden style={styles.backButtonLabel}>
                     ← Back
                   </Text>
@@ -196,7 +236,7 @@ export default function AddSourceScreen() {
                         }
                         kind="url"
                         label="Video or webpage URL"
-                        maxLength={2048}
+                        maxLength={SOURCE_LIMITS.url}
                         onBlur={() => setHasUrlBeenBlurred(true)}
                         onChangeText={(value) => {
                           setSourceUrl(value);
@@ -213,7 +253,7 @@ export default function AddSourceScreen() {
                           accessibilityHint="Enter a short name for this source"
                           helper="Required. Choose a name you will recognize later."
                           label="Source label"
-                          maxLength={100}
+                          maxLength={SOURCE_LIMITS.label}
                           onChangeText={setSourceLabel}
                           placeholder="E.g. How memory works"
                           value={sourceLabel}
@@ -223,7 +263,7 @@ export default function AddSourceScreen() {
                           accessibilityHint="Optionally enter a folder name for this source"
                           helper="Optional. Leave this blank if you do not need a folder."
                           label="Folder name"
-                          maxLength={100}
+                          maxLength={SOURCE_LIMITS.folder}
                           onChangeText={setFolderName}
                           optional
                           placeholder="E.g. Brain science"
@@ -243,11 +283,21 @@ export default function AddSourceScreen() {
                         </View>
 
                         <View style={styles.localNote}>
-                          <Text style={styles.localNoteEyebrow}>PREVIEW ONLY</Text>
+                          <Text style={styles.localNoteEyebrow}>LOCAL ONLY</Text>
                           <Text style={styles.localNoteText}>
-                            LearnNut has not uploaded, processed or saved this source.
+                            LearnNut will save these details on this device. Nothing will be uploaded
+                            or processed.
                           </Text>
                         </View>
+
+                        {saveError && (
+                          <View
+                            accessibilityLiveRegion="polite"
+                            accessibilityRole="alert"
+                            style={styles.errorMessage}>
+                            <Text style={styles.errorMessageText}>{saveError}</Text>
+                          </View>
+                        )}
                       </View>
                     )}
 
@@ -255,26 +305,39 @@ export default function AddSourceScreen() {
                       <Pressable
                         accessibilityHint={
                           step === 2
-                            ? 'Closes this local preview and returns to Home without saving'
+                            ? 'Saves this source on this device and opens the Library'
                             : step === 1
                               ? 'Opens a local preview of the source details'
                               : 'Continues to source labeling'
                         }
                         accessibilityRole="button"
-                        accessibilityState={{ disabled: !canContinue }}
-                        disabled={!canContinue}
-                        onPress={step === 2 ? returnHome : goForward}
+                        accessibilityState={{ busy: isSaving, disabled: isActionDisabled }}
+                        disabled={isActionDisabled}
+                        onPress={() => {
+                          if (step === 2) {
+                            void saveCurrentSource();
+                            return;
+                          }
+
+                          goForward();
+                        }}
                         style={({ pressed }) => [
                           styles.continueButton,
-                          !canContinue && styles.continueButtonDisabled,
-                          pressed && canContinue && styles.buttonPressed,
+                          isActionDisabled && styles.continueButtonDisabled,
+                          pressed && !isActionDisabled && styles.buttonPressed,
                         ]}>
                         <Text
                           style={[
                             styles.continueButtonLabel,
-                            !canContinue && styles.continueButtonLabelDisabled,
+                            isActionDisabled && styles.continueButtonLabelDisabled,
                           ]}>
-                          {step === 2 ? 'Back to Home' : step === 1 ? 'Continue to preview' : 'Continue'}
+                          {step === 2
+                            ? isSaving
+                              ? 'Saving…'
+                              : 'Save to Library'
+                            : step === 1
+                              ? 'Continue to preview'
+                              : 'Continue'}
                         </Text>
                       </Pressable>
                     </View>
@@ -440,6 +503,9 @@ const styles = StyleSheet.create({
     color: Brand.colors.cream,
     fontSize: 16,
     fontWeight: '800',
+  },
+  backButtonDisabled: {
+    opacity: 0.52,
   },
   stepLabel: {
     color: Brand.colors.creamMuted,
