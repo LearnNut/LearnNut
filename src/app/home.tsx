@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -5,6 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Brand } from '@/constants/brand';
 
 export default function HomeScreen() {
+  const router = useRouter();
+
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
@@ -30,8 +33,9 @@ export default function HomeScreen() {
               Add a video, PDF, audio file or text. LearnNut will build a grounded learning session.
             </Text>
             <Pressable
-              accessibilityHint="Source importing will be connected in the next build step"
+              accessibilityHint="Opens the Add Source flow for a video or webpage link"
               accessibilityRole="button"
+              onPress={() => router.push('/add-source')}
               style={({ pressed }) => [styles.addButton, pressed && styles.buttonPressed]}>
               <Text style={styles.addButtonLabel}>＋ Add your first source</Text>
             </Pressable>
