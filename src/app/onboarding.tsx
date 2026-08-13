@@ -91,6 +91,7 @@ export default function OnboardingScreen() {
   const [customInterestsText, setCustomInterestsText] = useState('');
   const [dailyTime, setDailyTime] = useState<DailyTime | null>(null);
 
+  const isNarrow = width < 390;
   const isWide = width >= 700;
   const currentContent = stepContent[step];
   const totalSteps = stepContent.length;
@@ -157,12 +158,7 @@ export default function OnboardingScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardAvoidingView}>
-          <ScrollView
-            ref={scrollViewRef}
-            contentContainerStyle={styles.scrollContent}
-            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}>
+          <View style={styles.screenContent}>
             <View style={[styles.shell, isWide && styles.shellWide]}>
               <View style={styles.brandRow}>
                 <View style={styles.brandMark} accessible={false}>
@@ -191,14 +187,22 @@ export default function OnboardingScreen() {
                 </View>
               </View>
 
-              <View style={[styles.card, isWide && styles.cardWide]}>
-                <View style={styles.headingGroup}>
-                  <Text style={styles.eyebrow}>{currentContent.eyebrow}</Text>
-                  <Text accessibilityRole="header" style={[styles.title, isWide && styles.titleWide]}>
-                    {currentContent.title}
-                  </Text>
-                  <Text style={styles.description}>{currentContent.description}</Text>
-                </View>
+              <View style={styles.card}>
+                <View style={styles.cardClip}>
+                  <ScrollView
+                    ref={scrollViewRef}
+                    contentContainerStyle={[styles.cardContent, isWide && styles.cardContentWide]}
+                    keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    style={styles.cardScroll}>
+                    <View style={styles.headingGroup}>
+                      <Text style={styles.eyebrow}>{currentContent.eyebrow}</Text>
+                      <Text accessibilityRole="header" style={[styles.title, isNarrow && styles.titleNarrow]}>
+                        {currentContent.title}
+                      </Text>
+                      <Text style={styles.description}>{currentContent.description}</Text>
+                    </View>
 
                 {step === 0 && (
                   <View style={[styles.options, isWide && styles.optionsWide]}>
@@ -336,20 +340,22 @@ export default function OnboardingScreen() {
                   </Pressable>
                 </View>
 
-                {!canContinue && step !== 1 && (
-                  <Text accessibilityLiveRegion="polite" style={styles.selectionHint}>
-                    {step === 0
-                      ? 'Choose one option to continue.'
-                      : step === 2
-                        ? isOtherInterestSelected
-                          ? 'Add at least one custom interest to continue.'
-                          : 'Choose at least one interest to continue.'
-                        : 'Choose a daily learning time to continue.'}
-                  </Text>
-                )}
+                    {!canContinue && step !== 1 && (
+                      <Text accessibilityLiveRegion="polite" style={styles.selectionHint}>
+                        {step === 0
+                          ? 'Choose one option to continue.'
+                          : step === 2
+                            ? isOtherInterestSelected
+                              ? 'Add at least one custom interest to continue.'
+                              : 'Choose at least one interest to continue.'
+                            : 'Choose a daily learning time to continue.'}
+                      </Text>
+                    )}
+                  </ScrollView>
+                </View>
               </View>
             </View>
-          </ScrollView>
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
@@ -451,13 +457,15 @@ const styles = StyleSheet.create({
     bottom: -150,
     left: -100,
   },
-  scrollContent: {
-    flexGrow: 1,
+  screenContent: {
+    flex: 1,
     paddingHorizontal: 18,
     paddingBottom: 22,
     paddingTop: 14,
   },
   shell: {
+    flex: 1,
+    minHeight: 0,
     width: '100%',
     maxWidth: 760,
     alignSelf: 'center',
@@ -526,19 +534,31 @@ const styles = StyleSheet.create({
     backgroundColor: Brand.colors.cream,
   },
   card: {
-    gap: 24,
+    flex: 1,
+    minHeight: 0,
     backgroundColor: Brand.colors.offWhite,
-    borderRadius: 30,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    paddingTop: 26,
+    borderRadius: 32,
     shadowColor: '#160C1D',
     shadowOffset: { width: 0, height: 14 },
     shadowOpacity: 0.24,
     shadowRadius: 26,
     elevation: 8,
   },
-  cardWide: {
+  cardClip: {
+    flex: 1,
+    borderRadius: 32,
+    overflow: 'hidden',
+  },
+  cardScroll: {
+    flex: 1,
+  },
+  cardContent: {
+    gap: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    paddingTop: 26,
+  },
+  cardContentWide: {
     paddingHorizontal: 34,
     paddingBottom: 28,
     paddingTop: 34,
@@ -555,14 +575,14 @@ const styles = StyleSheet.create({
   title: {
     color: Brand.colors.plum,
     fontFamily: Brand.fonts.rounded,
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: '800',
     letterSpacing: -0.7,
-    lineHeight: 36,
+    lineHeight: 38,
   },
-  titleWide: {
-    fontSize: 36,
-    lineHeight: 43,
+  titleNarrow: {
+    fontSize: 30,
+    lineHeight: 36,
   },
   description: {
     maxWidth: 610,
