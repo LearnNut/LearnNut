@@ -10,6 +10,7 @@
     "backgroundColor": "#352242",
     "ios": {
       "icon": "./assets/images/learnnut-icon.png",
+      "bundleIdentifier": "com.learnnut.learningapp",
       "supportsTablet": true
     },
     "android": {
