@@ -21,6 +21,7 @@ export default function RootLayout() {
       <Stack.Screen name="home" />
       <Stack.Screen name="add-source" />
       <Stack.Screen name="library" />
+      <Stack.Screen name="source/[id]" />
     </Stack>
   );
 }

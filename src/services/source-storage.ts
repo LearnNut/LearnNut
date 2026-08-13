@@ -182,6 +182,18 @@ export function getSavedSources(): Promise<SavedSource[]> {
   return runInOrder(async () => newestFirst(await readStoredSources()));
 }
 
+export function getSavedSource(id: string): Promise<SavedSource | null> {
+  return runInOrder(async () => {
+    if (typeof id !== 'string' || id.length === 0 || id !== id.trim()) {
+      return null;
+    }
+
+    const sources = await readStoredSources();
+
+    return sources.find((source) => source.id === id) ?? null;
+  });
+}
+
 export function saveSource(input: NewSavedSource): Promise<SavedSource> {
   return runInOrder(async () => {
     if (

@@ -94,6 +94,13 @@ export default function LibraryScreen() {
     router.push('/add-source');
   };
 
+  const openSourceDetails = (id: string) => {
+    router.push({
+      pathname: '/source/[id]',
+      params: { id },
+    });
+  };
+
   const removeSavedSource = async (source: SavedSource) => {
     if (deletingSourceRef.current !== null) {
       return;
@@ -130,24 +137,48 @@ export default function LibraryScreen() {
   const renderSource = ({ item }: { item: SavedSource }) => {
     const isDeleting = deletingId === item.id;
     const isDeleteDisabled = deletingId !== null;
+    const domain = getDisplayDomain(item.url);
+    const savedDate = getDisplayDate(item.createdAt);
+    const sourceDetailsAccessibilityLabel = [
+      `Open ${item.label}`,
+      `website ${domain}`,
+      ...(item.folder ? [`folder ${item.folder}`] : []),
+      `saved ${savedDate}`,
+    ].join(', ');
 
     return (
       <View style={styles.sourceCard}>
-        <View style={styles.sourceCopy}>
-          <Text style={styles.sourceLabel}>{item.label}</Text>
-          <Text numberOfLines={2} selectable style={styles.sourceDomain}>
-            {getDisplayDomain(item.url)}
-          </Text>
-        </View>
-
-        <View style={styles.sourceMetadata}>
-          {item.folder && (
-            <View style={styles.folderChip}>
-              <Text style={styles.folderChipLabel}>{item.folder}</Text>
+        <Pressable
+          accessibilityHint="Shows this saved source’s details"
+          accessibilityLabel={sourceDetailsAccessibilityLabel}
+          accessibilityRole="button"
+          onPress={() => openSourceDetails(item.id)}
+          style={({ pressed }) => [
+            styles.sourceDetailsButton,
+            pressed && styles.sourceDetailsButtonPressed,
+          ]}>
+          <View style={styles.sourceHeadingRow}>
+            <View style={styles.sourceCopy}>
+              <Text style={styles.sourceLabel}>{item.label}</Text>
+              <Text numberOfLines={2} selectable style={styles.sourceDomain}>
+                {domain}
+              </Text>
             </View>
-          )}
-          <Text style={styles.sourceDate}>Saved {getDisplayDate(item.createdAt)}</Text>
-        </View>
+
+            <View aria-hidden style={styles.detailsArrow}>
+              <Text style={styles.detailsArrowLabel}>→</Text>
+            </View>
+          </View>
+
+          <View style={styles.sourceMetadata}>
+            {item.folder && (
+              <View style={styles.folderChip}>
+                <Text style={styles.folderChipLabel}>{item.folder}</Text>
+              </View>
+            )}
+            <Text style={styles.sourceDate}>Saved {savedDate}</Text>
+          </View>
+        </Pressable>
 
         <Pressable
           accessibilityHint="Asks for confirmation before removing this source from this device"
@@ -456,14 +487,28 @@ const styles = StyleSheet.create({
     height: 12,
   },
   sourceCard: {
-    gap: 16,
+    gap: 12,
     backgroundColor: Brand.colors.white,
     borderColor: Brand.colors.cream,
     borderRadius: 22,
     borderWidth: 1,
     padding: 18,
   },
+  sourceDetailsButton: {
+    minHeight: 48,
+    gap: 14,
+    borderRadius: 16,
+  },
+  sourceDetailsButtonPressed: {
+    opacity: 0.72,
+  },
+  sourceHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   sourceCopy: {
+    flex: 1,
     minWidth: 0,
     gap: 4,
   },
@@ -479,6 +524,21 @@ const styles = StyleSheet.create({
     color: Brand.colors.plumSoft,
     fontSize: 15,
     lineHeight: 21,
+  },
+  detailsArrow: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Brand.colors.cream,
+    borderRadius: 14,
+  },
+  detailsArrowLabel: {
+    color: Brand.colors.plum,
+    fontFamily: Brand.fonts.rounded,
+    fontSize: 20,
+    fontWeight: '800',
+    lineHeight: 23,
   },
   sourceMetadata: {
     flexDirection: 'row',
