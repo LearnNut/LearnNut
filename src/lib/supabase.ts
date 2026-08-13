@@ -2,7 +2,7 @@ import 'react-native-url-polyfill/auto';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
-import { AppState, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
 function requirePublicEnvironmentVariable(value: string | undefined, name: string) {
   if (typeof value !== 'string' || value.trim().length === 0) {
@@ -31,13 +31,3 @@ export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
 });
 
 export type LearnNutSupabaseClient = typeof supabase;
-
-if (Platform.OS !== 'web') {
-  AppState.addEventListener('change', (state) => {
-    if (state === 'active') {
-      supabase.auth.startAutoRefresh();
-    } else {
-      supabase.auth.stopAutoRefresh();
-    }
-  });
-}

@@ -216,7 +216,7 @@ export default function AddSourceScreen() {
                       <Text
                         accessibilityRole="header"
                         style={[styles.title, isNarrow && styles.titleNarrow]}>
-                        What are we cracking?
+                        What would you like to learn from?
                       </Text>
                       <Text style={styles.description}>{currentContent.description}</Text>
                     </View>

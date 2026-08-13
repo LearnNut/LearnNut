@@ -37,4 +37,4 @@ Backend accounts, source processing, AI, subscriptions, and production analytics
 - Walnut: `#BD875D`
 - Off-white: `#FCF8F2`
 
-Tagline: **Crack it. Teach it. Keep it.**
+Tagline: **Learn it. Teach it. Remember it.**

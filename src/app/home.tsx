@@ -1,26 +1,107 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
+import { getFriendlyAuthError } from '@/lib/auth-errors';
+import { useAuth } from '@/providers/auth-provider';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { signOut } = useAuth();
+  const mountedRef = useRef(true);
+  const signOutInProgressRef = useRef(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [showSignOutConfirmation, setShowSignOutConfirmation] = useState(false);
+
+  useEffect(
+    () => {
+      mountedRef.current = true;
+
+      return () => {
+        mountedRef.current = false;
+      };
+    },
+    [],
+  );
+
+  const performSignOut = async () => {
+    if (signOutInProgressRef.current) {
+      return;
+    }
+
+    signOutInProgressRef.current = true;
+    setIsSigningOut(true);
+    setSignOutError(null);
+
+    try {
+      await signOut();
+    } catch (error) {
+      if (mountedRef.current) {
+        setShowSignOutConfirmation(false);
+        setSignOutError(getFriendlyAuthError(error, 'sign-out'));
+      }
+    } finally {
+      signOutInProgressRef.current = false;
+
+      if (mountedRef.current) {
+        setIsSigningOut(false);
+      }
+    }
+  };
+
+  const confirmSignOut = () => {
+    if (signOutInProgressRef.current) {
+      return;
+    }
+
+    setShowSignOutConfirmation(true);
+  };
+
+  const dismissSignOutConfirmation = () => {
+    if (!signOutInProgressRef.current) {
+      setShowSignOutConfirmation(false);
+    }
+  };
 
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.utilityRow}>
+            <Text style={styles.eyebrow}>LEARNNUT</Text>
+            <Pressable
+              accessibilityHint="Asks for confirmation before signing out of LearnNut"
+              accessibilityRole="button"
+              accessibilityState={{ busy: isSigningOut, disabled: isSigningOut }}
+              disabled={isSigningOut}
+              onPress={confirmSignOut}
+              style={({ pressed }) => [
+                styles.signOutButton,
+                isSigningOut && styles.signOutButtonDisabled,
+                pressed && !isSigningOut && styles.buttonPressed,
+              ]}>
+              <Text style={styles.signOutButtonLabel}>{isSigningOut ? 'Signing out…' : 'Sign out'}</Text>
+            </Pressable>
+          </View>
+
+          {signOutError !== null && (
+            <View accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.signOutError}>
+              <Text style={styles.signOutErrorText}>{signOutError}</Text>
+            </View>
+          )}
+
           <View style={styles.header}>
             <View style={styles.headerCopy}>
-              <Text style={styles.eyebrow}>LEARNNUT</Text>
               <Text accessibilityRole="header" style={styles.title}>
-                What are we cracking today?
+                What would you like to learn today?
               </Text>
             </View>
-            <View accessibilityLabel="Current learning streak: zero days" style={styles.streak}>
+            <View accessible accessibilityLabel="Current learning streak: zero days" style={styles.streak}>
               <Text style={styles.streakNumber}>0</Text>
               <Text style={styles.streakLabel}>day streak</Text>
             </View>
@@ -71,6 +152,62 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      <Modal
+        animationType="fade"
+        onRequestClose={dismissSignOutConfirmation}
+        transparent
+        visible={showSignOutConfirmation}>
+        <SafeAreaView
+          style={styles.confirmationOverlay}
+          edges={['top', 'bottom', 'left', 'right']}>
+          <ScrollView
+            contentContainerStyle={styles.confirmationScrollContent}
+            showsVerticalScrollIndicator={false}
+            style={styles.confirmationScroll}>
+            <View accessibilityViewIsModal style={styles.confirmationCard}>
+              <View style={styles.confirmationCopy}>
+                <Text accessibilityRole="header" style={styles.confirmationTitle}>
+                  Sign out?
+                </Text>
+                <Text style={styles.confirmationBody}>
+                  You’ll need to sign in again to continue learning.
+                </Text>
+              </View>
+
+              <View style={styles.confirmationActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: isSigningOut }}
+                  disabled={isSigningOut}
+                  onPress={dismissSignOutConfirmation}
+                  style={({ pressed }) => [
+                    styles.confirmationButton,
+                    isSigningOut && styles.confirmationButtonDisabled,
+                    pressed && !isSigningOut && styles.buttonPressed,
+                  ]}>
+                  <Text style={styles.cancelSignOutButtonLabel}>Stay signed in</Text>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ busy: isSigningOut, disabled: isSigningOut }}
+                  disabled={isSigningOut}
+                  onPress={() => void performSignOut()}
+                  style={({ pressed }) => [
+                    styles.confirmSignOutButton,
+                    isSigningOut && styles.confirmationButtonDisabled,
+                    pressed && !isSigningOut && styles.buttonPressed,
+                  ]}>
+                  <Text style={styles.confirmSignOutButtonLabel}>
+                    {isSigningOut ? 'Signing out…' : 'Sign out'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }
@@ -89,6 +226,13 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
     paddingTop: 18,
   },
+  utilityRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -100,10 +244,128 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   eyebrow: {
-    color: Brand.colors.walnut,
+    color: Brand.colors.plumSoft,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1.6,
+  },
+  signOutButton: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Brand.colors.white,
+    borderColor: Brand.colors.cream,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 17,
+    paddingVertical: 10,
+  },
+  signOutButtonDisabled: {
+    opacity: 0.58,
+  },
+  signOutButtonLabel: {
+    color: Brand.colors.plum,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  signOutError: {
+    backgroundColor: Brand.colors.cream,
+    borderColor: Brand.colors.walnut,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  signOutErrorText: {
+    color: Brand.colors.plum,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  confirmationOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(53, 34, 66, 0.68)',
+    padding: 22,
+  },
+  confirmationScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  confirmationScroll: {
+    width: '100%',
+    maxWidth: 420,
+  },
+  confirmationCard: {
+    width: '100%',
+    maxWidth: 420,
+    gap: 22,
+    backgroundColor: Brand.colors.offWhite,
+    borderColor: Brand.colors.cream,
+    borderRadius: 26,
+    borderWidth: 1,
+    padding: 24,
+  },
+  confirmationCopy: {
+    gap: 8,
+  },
+  confirmationTitle: {
+    color: Brand.colors.plum,
+    fontFamily: Brand.fonts.rounded,
+    fontSize: 25,
+    fontWeight: '800',
+    lineHeight: 31,
+  },
+  confirmationBody: {
+    color: Brand.colors.plumSoft,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  confirmationActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  confirmationButton: {
+    minHeight: 52,
+    minWidth: 140,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Brand.colors.white,
+    borderColor: Brand.colors.cream,
+    borderRadius: 17,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
+  confirmSignOutButton: {
+    minHeight: 52,
+    minWidth: 140,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Brand.colors.plum,
+    borderRadius: 17,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
+  confirmationButtonDisabled: {
+    opacity: 0.58,
+  },
+  cancelSignOutButtonLabel: {
+    color: Brand.colors.plum,
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  confirmSignOutButtonLabel: {
+    color: Brand.colors.cream,
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   title: {
     color: Brand.colors.plum,
