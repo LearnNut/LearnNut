@@ -1,6 +1,6 @@
-import { Stack, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   BackHandler,
@@ -42,6 +42,7 @@ export default function AddSourceScreen() {
   const { width } = useWindowDimensions();
   const scrollViewRef = useRef<ScrollView>(null);
   const isSavingRef = useRef(false);
+  const resetOnNextFocusRef = useRef(false);
   const [step, setStep] = useState<Step>(0);
   const [sourceUrl, setSourceUrl] = useState('');
   const [hasUrlBeenEdited, setHasUrlBeenEdited] = useState(false);
@@ -67,6 +68,25 @@ export default function AddSourceScreen() {
     AccessibilityInfo.announceForAccessibility(`Add Source, step ${step + 1} of ${stepContent.length}`);
   }, [step]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!resetOnNextFocusRef.current) {
+        return;
+      }
+
+      resetOnNextFocusRef.current = false;
+      isSavingRef.current = false;
+      setStep(0);
+      setSourceUrl('');
+      setHasUrlBeenEdited(false);
+      setHasUrlBeenBlurred(false);
+      setSourceLabel('');
+      setFolderName('');
+      setIsSaving(false);
+      setSaveError(null);
+    }, []),
+  );
+
   useEffect(() => {
     if (Platform.OS !== 'android' || !isSaving) {
       return;
@@ -85,7 +105,7 @@ export default function AddSourceScreen() {
       return;
     }
 
-    router.replace('/home');
+    router.navigate('/home');
   };
 
   const goBack = () => {
@@ -147,17 +167,18 @@ export default function AddSourceScreen() {
       return;
     }
 
-    router.dismissTo('/library');
+    resetOnNextFocusRef.current = true;
+    setIsSaving(false);
+    router.navigate('/library');
   };
 
   return (
     <View style={styles.screen}>
-      <Stack.Screen options={{ gestureEnabled: !isSaving }} />
       <StatusBar style="light" />
       <View pointerEvents="none" style={[styles.glow, styles.glowTop]} />
       <View pointerEvents="none" style={[styles.glow, styles.glowBottom]} />
 
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardAvoidingView}>
@@ -485,6 +506,7 @@ const styles = StyleSheet.create({
   },
   topRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 14,

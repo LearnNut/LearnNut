@@ -6,6 +6,7 @@ import {
   FlatList,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -87,11 +88,11 @@ export default function LibraryScreen() {
       return;
     }
 
-    router.replace('/home');
+    router.navigate('/home');
   };
 
   const openAddSource = () => {
-    router.push('/add-source');
+    router.navigate('/add-source');
   };
 
   const openSourceDetails = (id: string) => {
@@ -298,7 +299,7 @@ export default function LibraryScreen() {
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <FlatList
           contentContainerStyle={[styles.content, isNarrow && styles.contentNarrow]}
           data={!isLoading && !loadError ? sources : []}
@@ -316,55 +317,62 @@ export default function LibraryScreen() {
         onRequestClose={dismissDeleteConfirmation}
         transparent
         visible={pendingDeleteSource !== null}>
-        <View style={styles.modalBackdrop}>
-          <View accessibilityViewIsModal style={styles.confirmationCard}>
-            <View style={styles.confirmationCopy}>
-              <Text accessibilityRole="header" style={styles.confirmationTitle}>
-                Delete source?
-              </Text>
-              <Text style={styles.confirmationBody}>
-                Remove “{pendingDeleteSource?.label}” from your Library? This can’t be undone.
-              </Text>
-            </View>
-
-            <View style={styles.confirmationActions}>
-              <Pressable
-                accessibilityHint="Keeps this source in your Library"
-                accessibilityRole="button"
-                accessibilityState={{ disabled: deletingId !== null }}
-                disabled={deletingId !== null}
-                onPress={dismissDeleteConfirmation}
-                style={({ pressed }) => [
-                  styles.keepButton,
-                  deletingId !== null && styles.confirmationButtonDisabled,
-                  pressed && deletingId === null && styles.buttonPressed,
-                ]}>
-                <Text style={styles.keepButtonLabel}>Keep source</Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityHint="Permanently removes this source from this device"
-                accessibilityLabel={`Delete ${pendingDeleteSource?.label ?? 'source'}`}
-                accessibilityRole="button"
-                accessibilityState={{ busy: deletingId !== null, disabled: deletingId !== null }}
-                disabled={deletingId !== null}
-                onPress={() => {
-                  if (pendingDeleteSource) {
-                    void removeSavedSource(pendingDeleteSource);
-                  }
-                }}
-                style={({ pressed }) => [
-                  styles.confirmDeleteButton,
-                  deletingId !== null && styles.confirmationButtonDisabled,
-                  pressed && deletingId === null && styles.buttonPressed,
-                ]}>
-                <Text style={styles.confirmDeleteButtonLabel}>
-                  {deletingId !== null ? 'Deleting…' : 'Delete'}
+        <SafeAreaView
+          style={styles.modalBackdrop}
+          edges={['top', 'bottom', 'left', 'right']}>
+          <ScrollView
+            contentContainerStyle={styles.confirmationScrollContent}
+            showsVerticalScrollIndicator={false}
+            style={styles.confirmationScroll}>
+            <View accessibilityViewIsModal style={styles.confirmationCard}>
+              <View style={styles.confirmationCopy}>
+                <Text accessibilityRole="header" style={styles.confirmationTitle}>
+                  Delete source?
                 </Text>
-              </Pressable>
+                <Text style={styles.confirmationBody}>
+                  Remove “{pendingDeleteSource?.label}” from your Library? This can’t be undone.
+                </Text>
+              </View>
+
+              <View style={styles.confirmationActions}>
+                <Pressable
+                  accessibilityHint="Keeps this source in your Library"
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: deletingId !== null }}
+                  disabled={deletingId !== null}
+                  onPress={dismissDeleteConfirmation}
+                  style={({ pressed }) => [
+                    styles.keepButton,
+                    deletingId !== null && styles.confirmationButtonDisabled,
+                    pressed && deletingId === null && styles.buttonPressed,
+                  ]}>
+                  <Text style={styles.keepButtonLabel}>Keep source</Text>
+                </Pressable>
+
+                <Pressable
+                  accessibilityHint="Permanently removes this source from this device"
+                  accessibilityLabel={`Delete ${pendingDeleteSource?.label ?? 'source'}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ busy: deletingId !== null, disabled: deletingId !== null }}
+                  disabled={deletingId !== null}
+                  onPress={() => {
+                    if (pendingDeleteSource) {
+                      void removeSavedSource(pendingDeleteSource);
+                    }
+                  }}
+                  style={({ pressed }) => [
+                    styles.confirmDeleteButton,
+                    deletingId !== null && styles.confirmationButtonDisabled,
+                    pressed && deletingId === null && styles.buttonPressed,
+                  ]}>
+                  <Text style={styles.confirmDeleteButtonLabel}>
+                    {deletingId !== null ? 'Deleting…' : 'Delete'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
-        </View>
+          </ScrollView>
+        </SafeAreaView>
       </Modal>
     </View>
   );
@@ -695,6 +703,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(22, 12, 29, 0.56)',
     padding: 22,
   },
+  confirmationScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  confirmationScroll: {
+    width: '100%',
+    maxWidth: 440,
+  },
   confirmationCard: {
     width: '100%',
     maxWidth: 440,
@@ -722,10 +739,12 @@ const styles = StyleSheet.create({
   },
   confirmationActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   keepButton: {
     minHeight: 50,
+    minWidth: 140,
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -742,6 +761,7 @@ const styles = StyleSheet.create({
   },
   confirmDeleteButton: {
     minHeight: 50,
+    minWidth: 140,
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',

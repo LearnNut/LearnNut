@@ -1,32 +1,35 @@
-import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
 import { getFriendlyAuthError } from '@/lib/auth-errors';
 import { useAuth } from '@/providers/auth-provider';
 
-export default function HomeScreen() {
-  const router = useRouter();
-  const { signOut } = useAuth();
+const howItWorks = [
+  ['01', 'Add', 'Save a webpage or video link on this device.'],
+  ['02', 'Find', 'Search by label, folder or URL, or browse your Library.'],
+  ['03', 'Return', 'Open the source details and revisit the original whenever you’re ready.'],
+] as const;
+
+export default function MeScreen() {
+  const { signOut, user } = useAuth();
+  const { width } = useWindowDimensions();
   const mountedRef = useRef(true);
   const signOutInProgressRef = useRef(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [showSignOutConfirmation, setShowSignOutConfirmation] = useState(false);
+  const isNarrow = width < 390;
 
-  useEffect(
-    () => {
-      mountedRef.current = true;
+  useEffect(() => {
+    mountedRef.current = true;
 
-      return () => {
-        mountedRef.current = false;
-      };
-    },
-    [],
-  );
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const performSignOut = async () => {
     if (signOutInProgressRef.current) {
@@ -54,11 +57,9 @@ export default function HomeScreen() {
   };
 
   const confirmSignOut = () => {
-    if (signOutInProgressRef.current) {
-      return;
+    if (!signOutInProgressRef.current) {
+      setShowSignOutConfirmation(true);
     }
-
-    setShowSignOutConfirmation(true);
   };
 
   const dismissSignOutConfirmation = () => {
@@ -71,9 +72,64 @@ export default function HomeScreen() {
     <View style={styles.screen}>
       <StatusBar style="dark" />
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.utilityRow}>
-            <Text style={styles.eyebrow}>LEARNNUT</Text>
+        <ScrollView
+          contentContainerStyle={[styles.content, isNarrow && styles.contentNarrow]}
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.headingGroup}>
+            <Text style={styles.eyebrow}>YOUR SPACE</Text>
+            <Text accessibilityRole="header" style={[styles.title, isNarrow && styles.titleNarrow]}>
+              Me
+            </Text>
+            <Text style={styles.description}>Your LearnNut account and a quick guide to the app.</Text>
+          </View>
+
+          <View style={styles.accountCard}>
+            <View aria-hidden style={styles.accountMark}>
+              <Text style={styles.accountMarkLabel}>L</Text>
+            </View>
+            <View style={styles.accountCopy}>
+              <Text style={styles.accountEyebrow}>SIGNED IN AS</Text>
+              <Text selectable style={styles.accountEmail}>
+                {user?.email ?? 'LearnNut account'}
+              </Text>
+              <Text style={styles.accountNote}>Your saved sources remain local to this device.</Text>
+            </View>
+          </View>
+
+          <View style={styles.guideSection}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              How LearnNut works
+            </Text>
+            <View style={styles.guideList}>
+              {howItWorks.map(([number, title, body]) => (
+                <View key={number} style={styles.guideRow}>
+                  <Text aria-hidden style={styles.guideNumber}>
+                    {number}
+                  </Text>
+                  <View style={styles.guideCopy}>
+                    <Text style={styles.guideTitle}>{title}</Text>
+                    <Text style={styles.guideBody}>{body}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.signOutSection}>
+            <View style={styles.signOutCopy}>
+              <Text style={styles.signOutTitle}>Finished for now?</Text>
+              <Text style={styles.signOutBody}>You can sign back in whenever you want to return.</Text>
+            </View>
+
+            {signOutError !== null && (
+              <View
+                accessibilityLiveRegion="assertive"
+                accessibilityRole="alert"
+                style={styles.signOutError}>
+                <Text style={styles.signOutErrorText}>{signOutError}</Text>
+              </View>
+            )}
+
             <Pressable
               accessibilityHint="Asks for confirmation before signing out of LearnNut"
               accessibilityRole="button"
@@ -87,68 +143,6 @@ export default function HomeScreen() {
               ]}>
               <Text style={styles.signOutButtonLabel}>{isSigningOut ? 'Signing out…' : 'Sign out'}</Text>
             </Pressable>
-          </View>
-
-          {signOutError !== null && (
-            <View accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.signOutError}>
-              <Text style={styles.signOutErrorText}>{signOutError}</Text>
-            </View>
-          )}
-
-          <View style={styles.header}>
-            <View style={styles.headerCopy}>
-              <Text accessibilityRole="header" style={styles.title}>
-                What would you like to learn today?
-              </Text>
-            </View>
-            <View accessible accessibilityLabel="Current learning streak: zero days" style={styles.streak}>
-              <Text style={styles.streakNumber}>0</Text>
-              <Text style={styles.streakLabel}>day streak</Text>
-            </View>
-          </View>
-
-          <View style={styles.heroCard}>
-            <Text style={styles.heroEyebrow}>START A LESSON</Text>
-            <Text style={styles.heroTitle}>Turn a source into something you can teach.</Text>
-            <Text style={styles.heroBody}>
-              Add a video, PDF, audio file or text. LearnNut will build a grounded learning session.
-            </Text>
-            <Pressable
-              accessibilityHint="Opens the Add Source flow for a video or webpage link"
-              accessibilityRole="button"
-              onPress={() => router.push('/add-source')}
-              style={({ pressed }) => [styles.addButton, pressed && styles.buttonPressed]}>
-              <Text style={styles.addButtonLabel}>＋ Add your first source</Text>
-            </Pressable>
-            <Pressable
-              accessibilityHint="Opens sources saved on this device"
-              accessibilityRole="button"
-              onPress={() => router.push('/library')}
-              style={({ pressed }) => [styles.libraryButton, pressed && styles.buttonPressed]}>
-              <Text style={styles.libraryButtonLabel}>Open Library</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Your learning loop</Text>
-            <Text style={styles.sectionMeta}>4 steps</Text>
-          </View>
-
-          <View style={styles.steps}>
-            {[
-              ['01', 'Learn', 'Watch or read with source bookmarks.'],
-              ['02', 'Prove', 'Answer questions and inspect the evidence.'],
-              ['03', 'Teach', 'Explain it to Milo, Ari and Nova.'],
-              ['04', 'Keep', 'Repair gaps and return for short reviews.'],
-            ].map(([number, title, body]) => (
-              <View key={number} style={styles.stepCard}>
-                <Text style={styles.stepNumber}>{number}</Text>
-                <View style={styles.stepCopy}>
-                  <Text style={styles.stepTitle}>{title}</Text>
-                  <Text style={styles.stepBody}>{body}</Text>
-                </View>
-              </View>
-            ))}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -221,66 +215,189 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
     gap: 24,
     paddingHorizontal: 22,
-    paddingBottom: 48,
+    paddingBottom: 32,
     paddingTop: 18,
   },
-  utilityRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
+  contentNarrow: {
+    gap: 20,
+    paddingHorizontal: 18,
+    paddingTop: 14,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  headerCopy: {
-    flex: 1,
-    minWidth: 0,
+  headingGroup: {
+    gap: 7,
   },
   eyebrow: {
     color: Brand.colors.plumSoft,
     fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
+  title: {
+    color: Brand.colors.plum,
+    fontFamily: Brand.fonts.rounded,
+    fontSize: 40,
     fontWeight: '800',
-    letterSpacing: 1.6,
+    letterSpacing: -0.8,
+    lineHeight: 46,
+  },
+  titleNarrow: {
+    fontSize: 36,
+    lineHeight: 42,
+  },
+  description: {
+    color: Brand.colors.plumSoft,
+    fontSize: 16,
+    lineHeight: 23,
+  },
+  accountCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    backgroundColor: Brand.colors.plum,
+    borderRadius: 24,
+    padding: 20,
+  },
+  accountMark: {
+    width: 54,
+    height: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Brand.colors.cream,
+    borderRadius: 18,
+  },
+  accountMarkLabel: {
+    color: Brand.colors.plum,
+    fontFamily: Brand.fonts.rounded,
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  accountCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  accountEyebrow: {
+    color: Brand.colors.creamMuted,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  accountEmail: {
+    color: Brand.colors.cream,
+    fontFamily: Brand.fonts.rounded,
+    fontSize: 17,
+    fontWeight: '800',
+    lineHeight: 23,
+  },
+  accountNote: {
+    color: Brand.colors.creamMuted,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  guideSection: {
+    gap: 13,
+  },
+  sectionTitle: {
+    color: Brand.colors.plum,
+    fontFamily: Brand.fonts.rounded,
+    fontSize: 21,
+    fontWeight: '800',
+  },
+  guideList: {
+    gap: 10,
+  },
+  guideRow: {
+    minHeight: 76,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: Brand.colors.white,
+    borderColor: Brand.colors.cream,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+  },
+  guideNumber: {
+    color: Brand.colors.plumSoft,
+    fontFamily: Brand.fonts.rounded,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  guideCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  guideTitle: {
+    color: Brand.colors.plum,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  guideBody: {
+    color: Brand.colors.plumSoft,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  signOutSection: {
+    gap: 14,
+    backgroundColor: Brand.colors.cream,
+    borderRadius: 22,
+    padding: 18,
+  },
+  signOutCopy: {
+    gap: 4,
+  },
+  signOutTitle: {
+    color: Brand.colors.plum,
+    fontFamily: Brand.fonts.rounded,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  signOutBody: {
+    color: Brand.colors.plumSoft,
+    fontSize: 14,
+    lineHeight: 20,
   },
   signOutButton: {
-    minHeight: 48,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Brand.colors.white,
-    borderColor: Brand.colors.cream,
-    borderRadius: 16,
+    borderColor: Brand.colors.plumSoft,
+    borderRadius: 17,
     borderWidth: 1,
-    paddingHorizontal: 17,
-    paddingVertical: 10,
+    paddingHorizontal: 18,
   },
   signOutButtonDisabled: {
     opacity: 0.58,
   },
   signOutButtonLabel: {
     color: Brand.colors.plum,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
   },
   signOutError: {
-    backgroundColor: Brand.colors.cream,
+    backgroundColor: Brand.colors.white,
     borderColor: Brand.colors.walnut,
-    borderRadius: 16,
+    borderRadius: 15,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
   },
   signOutErrorText: {
     color: Brand.colors.plum,
     fontSize: 14,
     fontWeight: '600',
     lineHeight: 20,
+  },
+  buttonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.99 }],
   },
   confirmationOverlay: {
     flex: 1,
@@ -300,7 +417,6 @@ const styles = StyleSheet.create({
   },
   confirmationCard: {
     width: '100%',
-    maxWidth: 420,
     gap: 22,
     backgroundColor: Brand.colors.offWhite,
     borderColor: Brand.colors.cream,
@@ -366,144 +482,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     textAlign: 'center',
-  },
-  title: {
-    color: Brand.colors.plum,
-    fontFamily: Brand.fonts.rounded,
-    fontSize: 31,
-    fontWeight: '800',
-    letterSpacing: -0.7,
-    lineHeight: 37,
-    marginTop: 6,
-    maxWidth: 280,
-  },
-  streak: {
-    minWidth: 66,
-    alignItems: 'center',
-    backgroundColor: Brand.colors.cream,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-  },
-  streakNumber: {
-    color: Brand.colors.plum,
-    fontSize: 20,
-    fontWeight: '800',
-    lineHeight: 23,
-  },
-  streakLabel: {
-    color: Brand.colors.plumSoft,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  heroCard: {
-    gap: 13,
-    backgroundColor: Brand.colors.plum,
-    borderRadius: 28,
-    padding: 24,
-    shadowColor: Brand.colors.plum,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.16,
-    shadowRadius: 22,
-    elevation: 5,
-  },
-  heroEyebrow: {
-    color: Brand.colors.lavender,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1.4,
-  },
-  heroTitle: {
-    color: Brand.colors.cream,
-    fontFamily: Brand.fonts.rounded,
-    fontSize: 26,
-    fontWeight: '800',
-    lineHeight: 32,
-  },
-  heroBody: {
-    color: Brand.colors.creamMuted,
-    fontSize: 16,
-    lineHeight: 23,
-  },
-  addButton: {
-    minHeight: 54,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Brand.colors.cream,
-    borderRadius: 18,
-    marginTop: 4,
-    paddingHorizontal: 18,
-  },
-  addButtonLabel: {
-    color: Brand.colors.plum,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  libraryButton: {
-    minHeight: 54,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderColor: 'rgba(249, 233, 208, 0.5)',
-    borderRadius: 18,
-    borderWidth: 1,
-    paddingHorizontal: 18,
-  },
-  libraryButtonLabel: {
-    color: Brand.colors.cream,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  buttonPressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.99 }],
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    color: Brand.colors.plum,
-    fontFamily: Brand.fonts.rounded,
-    fontSize: 21,
-    fontWeight: '800',
-  },
-  sectionMeta: {
-    color: Brand.colors.plumSoft,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  steps: {
-    gap: 11,
-  },
-  stepCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 15,
-    backgroundColor: Brand.colors.white,
-    borderColor: Brand.colors.cream,
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 16,
-  },
-  stepNumber: {
-    color: Brand.colors.walnut,
-    fontFamily: Brand.fonts.rounded,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  stepCopy: {
-    flex: 1,
-    gap: 3,
-  },
-  stepTitle: {
-    color: Brand.colors.plum,
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  stepBody: {
-    color: Brand.colors.plumSoft,
-    fontSize: 14,
-    lineHeight: 20,
   },
 });
