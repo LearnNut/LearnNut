@@ -1,10 +1,27 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AuthTextField } from '@/components/auth-screen';
 import { Brand } from '@/constants/brand';
 import { getFriendlyAuthError } from '@/lib/auth-errors';
+import {
+  getDisplayNameValidationError,
+  normalizeDisplayName,
+} from '@/lib/display-name';
 import { useAuth } from '@/providers/auth-provider';
 
 const howItWorks = [
@@ -14,14 +31,42 @@ const howItWorks = [
 ] as const;
 
 export default function MeScreen() {
-  const { signOut, user } = useAuth();
+  const {
+    displayName,
+    displayNameError,
+    displayNameLoading,
+    refreshDisplayName,
+    signOut,
+    updateDisplayName,
+    user,
+  } = useAuth();
   const { width } = useWindowDimensions();
   const mountedRef = useRef(true);
+  const nameInputRef = useRef<TextInput>(null);
+  const nameUpdateInProgressRef = useRef(false);
   const signOutInProgressRef = useRef(false);
+  const [showNameEditor, setShowNameEditor] = useState(false);
+  const [nameEditorUserId, setNameEditorUserId] = useState<string | null>(null);
+  const [nameDraft, setNameDraft] = useState('');
+  const [nameTouched, setNameTouched] = useState(false);
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [nameSaveError, setNameSaveError] = useState<string | null>(null);
+  const [nameSaveSuccess, setNameSaveSuccess] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [showSignOutConfirmation, setShowSignOutConfirmation] = useState(false);
   const isNarrow = width < 390;
+  const normalizedNameDraft = normalizeDisplayName(nameDraft);
+  const nameValidationError = getDisplayNameValidationError(nameDraft);
+  const nameFieldError = nameTouched ? (nameValidationError ?? undefined) : undefined;
+  const nameEditorBelongsToCurrentUser =
+    nameEditorUserId !== null && nameEditorUserId === user?.id;
+  const canSaveName =
+    nameEditorBelongsToCurrentUser &&
+    nameValidationError === null &&
+    (normalizedNameDraft !== (displayName ?? '') || displayNameError !== null) &&
+    !isSavingName &&
+    !displayNameLoading;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -30,6 +75,83 @@ export default function MeScreen() {
       mountedRef.current = false;
     };
   }, []);
+
+  const openNameEditor = () => {
+    if (
+      user === null ||
+      displayNameLoading ||
+      (displayName === null && displayNameError !== null)
+    ) {
+      return;
+    }
+
+    setNameDraft(displayName ?? '');
+    setNameEditorUserId(user.id);
+    setNameTouched(false);
+    setNameSaveError(null);
+    setNameSaveSuccess(null);
+    setShowNameEditor(true);
+  };
+
+  const dismissNameEditor = () => {
+    if (!nameUpdateInProgressRef.current) {
+      setShowNameEditor(false);
+      setNameEditorUserId(null);
+      setNameDraft('');
+      setNameTouched(false);
+      setNameSaveError(null);
+    }
+  };
+
+  const saveName = async () => {
+    if (nameUpdateInProgressRef.current) {
+      return;
+    }
+
+    if (!nameEditorBelongsToCurrentUser) {
+      dismissNameEditor();
+      return;
+    }
+
+    setNameTouched(true);
+    setNameSaveError(null);
+
+    if (nameValidationError !== null) {
+      return;
+    }
+
+    nameUpdateInProgressRef.current = true;
+    setIsSavingName(true);
+    const wasAddingName = displayName === null;
+
+    try {
+      await updateDisplayName(nameDraft);
+
+      if (mountedRef.current) {
+        setShowNameEditor(false);
+        setNameEditorUserId(null);
+        setNameDraft('');
+        setNameTouched(false);
+        setNameSaveSuccess(
+          wasAddingName ? 'Your name has been added.' : 'Your name has been updated.',
+        );
+      }
+    } catch (error) {
+      if (mountedRef.current) {
+        setNameSaveError(
+          error instanceof Error
+            ? error.message
+            : 'We couldn’t save your name just now. Please try again.',
+        );
+      }
+    } finally {
+      nameUpdateInProgressRef.current = false;
+
+      if (mountedRef.current) {
+        setIsSavingName(false);
+      }
+    }
+  };
 
   const performSignOut = async () => {
     if (signOutInProgressRef.current) {
@@ -88,13 +210,87 @@ export default function MeScreen() {
               <Text style={styles.accountMarkLabel}>L</Text>
             </View>
             <View style={styles.accountCopy}>
-              <Text style={styles.accountEyebrow}>SIGNED IN AS</Text>
+              <Text style={styles.accountEyebrow}>YOUR NAME</Text>
+
+              {displayName === null && displayNameLoading ? (
+                <View
+                  accessible
+                  accessibilityLabel="Loading your saved name"
+                  accessibilityLiveRegion="polite"
+                  accessibilityRole="progressbar"
+                  accessibilityState={{ busy: true }}
+                  style={styles.accountStatusRow}>
+                  <ActivityIndicator color={Brand.colors.cream} size="small" />
+                  <Text style={styles.accountStatusText}>Loading your name…</Text>
+                </View>
+              ) : displayName !== null ? (
+                <Text selectable style={styles.accountName}>
+                  {displayName}
+                </Text>
+              ) : displayNameError === null ? (
+                <Text style={styles.accountStatusText}>No name added yet.</Text>
+              ) : (
+                <Text style={styles.accountStatusText}>Your saved name isn’t available right now.</Text>
+              )}
+
+              <Text style={styles.accountEmailLabel}>SIGNED IN AS</Text>
               <Text selectable style={styles.accountEmail}>
                 {user?.email ?? 'LearnNut account'}
               </Text>
               <Text style={styles.accountNote}>Your saved sources remain local to this device.</Text>
+
+              {displayNameError !== null && (
+                <View style={styles.nameLoadError}>
+                  <Text
+                    accessibilityLiveRegion="polite"
+                    accessibilityRole="alert"
+                    style={styles.nameLoadErrorText}>
+                    {displayNameError}
+                  </Text>
+                  <Pressable
+                    accessibilityHint="Tries to load and synchronize your saved name again"
+                    accessibilityRole="button"
+                    onPress={() => void refreshDisplayName()}
+                    style={({ pressed }) => [
+                      styles.nameRetryButton,
+                      pressed && styles.accountButtonPressed,
+                    ]}>
+                    <Text style={styles.nameRetryButtonLabel}>Try again</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {(displayName !== null || (!displayNameLoading && displayNameError === null)) && (
+                <Pressable
+                  accessibilityHint={
+                    displayName === null
+                      ? 'Opens a form to add the name LearnNut uses for you'
+                      : 'Opens a form to change the name LearnNut uses for you'
+                  }
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: displayNameLoading }}
+                  disabled={displayNameLoading}
+                  onPress={openNameEditor}
+                  style={({ pressed }) => [
+                    styles.nameEditButton,
+                    displayNameLoading && styles.nameEditButtonDisabled,
+                    pressed && !displayNameLoading && styles.accountButtonPressed,
+                  ]}>
+                  <Text style={styles.nameEditButtonLabel}>
+                    {displayName === null ? 'Add name' : 'Edit name'}
+                  </Text>
+                </Pressable>
+              )}
             </View>
           </View>
+
+          {nameSaveSuccess !== null && (
+            <View
+              accessibilityLiveRegion="polite"
+              style={styles.nameSaveSuccess}>
+              <Text style={styles.nameSaveSuccessText}>{nameSaveSuccess}</Text>
+            </View>
+          )}
 
           <View style={styles.guideSection}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>
@@ -149,6 +345,109 @@ export default function MeScreen() {
 
       <Modal
         animationType="fade"
+        onRequestClose={dismissNameEditor}
+        onShow={() => nameInputRef.current?.focus()}
+        transparent
+        visible={showNameEditor && nameEditorBelongsToCurrentUser}>
+        <SafeAreaView
+          style={styles.confirmationOverlay}
+          edges={['top', 'bottom', 'left', 'right']}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.nameEditorKeyboardAvoidingView}>
+            <ScrollView
+              contentContainerStyle={styles.confirmationScrollContent}
+              keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              style={styles.confirmationScroll}>
+              <View accessibilityViewIsModal style={styles.confirmationCard}>
+                <View style={styles.confirmationCopy}>
+                  <Text accessibilityRole="header" style={styles.confirmationTitle}>
+                    {displayName === null ? 'Add your name' : 'Edit your name'}
+                  </Text>
+                  <Text style={styles.confirmationBody}>
+                    Use the name you’d like LearnNut to greet you with. A surname is optional.
+                  </Text>
+                </View>
+
+                <AuthTextField
+                  accessibilityHint="Enter your preferred name. A surname is optional"
+                  aria-required
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  autoCorrect={false}
+                  editable={!isSavingName}
+                  error={nameFieldError}
+                  label="Name"
+                  onBlur={() => setNameTouched(true)}
+                  onChangeText={(value) => {
+                    setNameDraft(value);
+                    setNameSaveError(null);
+                  }}
+                  onSubmitEditing={() => {
+                    if (canSaveName) {
+                      void saveName();
+                    }
+                  }}
+                  placeholder="Your preferred name"
+                  ref={nameInputRef}
+                  returnKeyType="done"
+                  selectTextOnFocus
+                  spellCheck={false}
+                  textContentType="name"
+                  value={nameDraft}
+                />
+
+                {nameSaveError !== null && (
+                  <View
+                    accessibilityLiveRegion="assertive"
+                    accessibilityRole="alert"
+                    style={styles.nameSaveError}>
+                    <Text style={styles.nameSaveErrorText}>{nameSaveError}</Text>
+                  </View>
+                )}
+
+                <View style={styles.confirmationActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: isSavingName }}
+                    disabled={isSavingName}
+                    onPress={dismissNameEditor}
+                    style={({ pressed }) => [
+                      styles.confirmationButton,
+                      isSavingName && styles.confirmationButtonDisabled,
+                      pressed && !isSavingName && styles.buttonPressed,
+                    ]}>
+                    <Text style={styles.confirmationSecondaryButtonLabel}>Cancel</Text>
+                  </Pressable>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ busy: isSavingName, disabled: !canSaveName }}
+                    disabled={!canSaveName}
+                    onPress={() => void saveName()}
+                    style={({ pressed }) => [
+                      styles.confirmationPrimaryButton,
+                      !canSaveName && styles.confirmationButtonDisabled,
+                      pressed && canSaveName && styles.buttonPressed,
+                    ]}>
+                    {isSavingName && (
+                      <ActivityIndicator color={Brand.colors.cream} size="small" />
+                    )}
+                    <Text style={styles.confirmationPrimaryButtonLabel}>
+                      {isSavingName ? 'Saving…' : 'Save name'}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
+
+      <Modal
+        animationType="fade"
         onRequestClose={dismissSignOutConfirmation}
         transparent
         visible={showSignOutConfirmation}>
@@ -180,7 +479,7 @@ export default function MeScreen() {
                     isSigningOut && styles.confirmationButtonDisabled,
                     pressed && !isSigningOut && styles.buttonPressed,
                   ]}>
-                  <Text style={styles.cancelSignOutButtonLabel}>Stay signed in</Text>
+                  <Text style={styles.confirmationSecondaryButtonLabel}>Stay signed in</Text>
                 </Pressable>
 
                 <Pressable
@@ -189,11 +488,11 @@ export default function MeScreen() {
                   disabled={isSigningOut}
                   onPress={() => void performSignOut()}
                   style={({ pressed }) => [
-                    styles.confirmSignOutButton,
+                    styles.confirmationPrimaryButton,
                     isSigningOut && styles.confirmationButtonDisabled,
                     pressed && !isSigningOut && styles.buttonPressed,
                   ]}>
-                  <Text style={styles.confirmSignOutButtonLabel}>
+                  <Text style={styles.confirmationPrimaryButtonLabel}>
                     {isSigningOut ? 'Signing out…' : 'Sign out'}
                   </Text>
                 </Pressable>
@@ -256,7 +555,7 @@ const styles = StyleSheet.create({
   },
   accountCard: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 16,
     backgroundColor: Brand.colors.plum,
     borderRadius: 24,
@@ -287,17 +586,100 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1.2,
   },
-  accountEmail: {
+  accountName: {
     color: Brand.colors.cream,
     fontFamily: Brand.fonts.rounded,
-    fontSize: 17,
+    fontSize: 22,
     fontWeight: '800',
-    lineHeight: 23,
+    lineHeight: 28,
+  },
+  accountStatusRow: {
+    minHeight: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  accountStatusText: {
+    color: Brand.colors.cream,
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 21,
+  },
+  accountEmailLabel: {
+    color: Brand.colors.creamMuted,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.1,
+    marginTop: 8,
+  },
+  accountEmail: {
+    color: Brand.colors.creamMuted,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   accountNote: {
     color: Brand.colors.creamMuted,
     fontSize: 12,
     lineHeight: 17,
+  },
+  nameLoadError: {
+    alignItems: 'flex-start',
+    gap: 3,
+    marginTop: 6,
+  },
+  nameLoadErrorText: {
+    color: Brand.colors.creamMuted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  nameRetryButton: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    paddingHorizontal: 4,
+  },
+  nameRetryButtonLabel: {
+    color: Brand.colors.cream,
+    fontSize: 14,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
+  nameEditButton: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: Brand.colors.cream,
+    borderRadius: 16,
+    marginTop: 8,
+    paddingHorizontal: 18,
+  },
+  nameEditButtonDisabled: {
+    opacity: 0.58,
+  },
+  nameEditButtonLabel: {
+    color: Brand.colors.plum,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  accountButtonPressed: {
+    opacity: 0.72,
+  },
+  nameSaveSuccess: {
+    backgroundColor: Brand.colors.cream,
+    borderColor: Brand.colors.walnut,
+    borderRadius: 17,
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+  },
+  nameSaveSuccessText: {
+    color: Brand.colors.plum,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
   },
   guideSection: {
     gap: 13,
@@ -406,6 +788,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(53, 34, 66, 0.68)',
     padding: 22,
   },
+  nameEditorKeyboardAvoidingView: {
+    width: '100%',
+    flex: 1,
+    alignItems: 'center',
+  },
   confirmationScrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -439,6 +826,20 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
   },
+  nameSaveError: {
+    backgroundColor: Brand.colors.cream,
+    borderColor: Brand.colors.walnut,
+    borderRadius: 15,
+    borderWidth: 1,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+  },
+  nameSaveErrorText: {
+    color: Brand.colors.plum,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
   confirmationActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -457,12 +858,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 11,
   },
-  confirmSignOutButton: {
+  confirmationPrimaryButton: {
     minHeight: 52,
     minWidth: 140,
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     backgroundColor: Brand.colors.plum,
     borderRadius: 17,
     paddingHorizontal: 12,
@@ -471,13 +874,13 @@ const styles = StyleSheet.create({
   confirmationButtonDisabled: {
     opacity: 0.58,
   },
-  cancelSignOutButtonLabel: {
+  confirmationSecondaryButtonLabel: {
     color: Brand.colors.plum,
     fontSize: 14,
     fontWeight: '800',
     textAlign: 'center',
   },
-  confirmSignOutButtonLabel: {
+  confirmationPrimaryButtonLabel: {
     color: Brand.colors.cream,
     fontSize: 14,
     fontWeight: '800',

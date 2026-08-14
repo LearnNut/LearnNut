@@ -10,6 +10,10 @@ import {
   AuthTextField,
 } from '@/components/auth-screen';
 import { getFriendlyAuthError } from '@/lib/auth-errors';
+import {
+  getDisplayNameValidationError,
+  normalizeDisplayName,
+} from '@/lib/display-name';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -20,22 +24,28 @@ function isValidEmailAddress(value: string) {
 export default function SignUpScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
   const mountedRef = useRef(true);
   const submissionInProgressRef = useRef(false);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+  const [nameTouched, setNameTouched] = useState(false);
   const [confirmPasswordTouched, setConfirmPasswordTouched] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [waitingForSession, setWaitingForSession] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
 
+  const normalizedName = normalizeDisplayName(name);
+  const nameValidationError = getDisplayNameValidationError(name);
   const normalizedEmail = email.trim();
+  const nameError = submitted || nameTouched ? nameValidationError ?? undefined : undefined;
   const emailError = submitted && !isValidEmailAddress(normalizedEmail) ? 'Enter a valid email address.' : undefined;
   const passwordError =
     submitted && password.length < 6 ? 'Choose a password with at least 6 characters.' : undefined;
@@ -48,7 +58,11 @@ export default function SignUpScreen() {
           : undefined
       : undefined;
   const canSubmit =
-    normalizedEmail.length > 0 && password.length > 0 && confirmPassword.length > 0 && !isSubmitting;
+    nameValidationError === null &&
+    normalizedEmail.length > 0 &&
+    password.length > 0 &&
+    confirmPassword.length > 0 &&
+    !isSubmitting;
 
   useEffect(() => {
     if (waitingForSession && session !== null) {
@@ -84,10 +98,12 @@ export default function SignUpScreen() {
     }
 
     setSubmitted(true);
+    setNameTouched(true);
     setConfirmPasswordTouched(true);
     setSubmissionError(null);
 
     if (
+      nameValidationError !== null ||
       !isValidEmailAddress(normalizedEmail) ||
       password.length < 6 ||
       confirmPassword !== password
@@ -103,6 +119,9 @@ export default function SignUpScreen() {
       const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
+        options: {
+          data: { display_name: normalizedName },
+        },
       });
 
       if (!mountedRef.current) {
@@ -147,6 +166,28 @@ export default function SignUpScreen() {
 
       <View style={styles.fields}>
         <AuthTextField
+          accessibilityHint="Enter your preferred name. A surname is optional"
+          aria-required
+          autoCapitalize="words"
+          autoComplete="name"
+          autoCorrect={false}
+          editable={!isSubmitting}
+          error={nameError}
+          label="Name"
+          onBlur={() => setNameTouched(true)}
+          onChangeText={(value) => {
+            setName(value);
+            clearSubmissionError();
+          }}
+          onSubmitEditing={() => emailInputRef.current?.focus()}
+          placeholder="Your preferred name"
+          returnKeyType="next"
+          spellCheck={false}
+          textContentType="name"
+          value={name}
+        />
+
+        <AuthTextField
           accessibilityHint="Enter the email address you want to use for LearnNut"
           autoCapitalize="none"
           autoComplete="email"
@@ -161,6 +202,7 @@ export default function SignUpScreen() {
           }}
           onSubmitEditing={() => passwordInputRef.current?.focus()}
           placeholder="you@example.com"
+          ref={emailInputRef}
           returnKeyType="next"
           spellCheck={false}
           textContentType="emailAddress"

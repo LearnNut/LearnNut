@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
+import { getFirstGivenName } from '@/lib/display-name';
+import { useAuth } from '@/providers/auth-provider';
 import { getSavedSources, type SavedSource } from '@/services/source-storage';
 
 const RECENT_SOURCE_LIMIT = 3;
@@ -65,6 +67,12 @@ function getSavedSourceStreak(sources: SavedSource[]) {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const {
+    displayName,
+    displayNameError,
+    displayNameLoading,
+    refreshDisplayName,
+  } = useAuth();
   const { width } = useWindowDimensions();
   const loadRequestRef = useRef(0);
   const [sources, setSources] = useState<SavedSource[]>([]);
@@ -107,6 +115,9 @@ export default function HomeScreen() {
 
   const recentSources = sources.slice(0, RECENT_SOURCE_LIMIT);
   const streak = getSavedSourceStreak(sources);
+  const firstName = getFirstGivenName(displayName);
+  const greeting =
+    firstName !== null ? `Hi, ${firstName}.` : displayNameLoading ? 'Hi…' : 'Hi there';
 
   const openSourceDetails = (id: string) => {
     router.push({
@@ -126,10 +137,29 @@ export default function HomeScreen() {
 
           <View style={styles.greetingRow}>
             <View style={styles.greetingCopy}>
-              <Text accessibilityRole="header" style={[styles.title, isNarrow && styles.titleNarrow]}>
-                Welcome back.
+              <Text
+                accessibilityLabel={displayNameLoading && firstName === null ? 'Loading your name' : greeting}
+                accessibilityLiveRegion="polite"
+                accessibilityRole="header"
+                style={[styles.title, isNarrow && styles.titleNarrow]}>
+                {greeting}
               </Text>
               <Text style={styles.prompt}>What would you like to learn today?</Text>
+
+              {displayNameError !== null && (
+                <View style={styles.nameNotice}>
+                  <Text accessibilityLiveRegion="polite" accessibilityRole="alert" style={styles.nameNoticeText}>
+                    {displayNameError}
+                  </Text>
+                  <Pressable
+                    accessibilityHint="Tries to refresh your account name"
+                    accessibilityRole="button"
+                    onPress={() => void refreshDisplayName()}
+                    style={({ pressed }) => [styles.nameAction, pressed && styles.buttonPressed]}>
+                    <Text style={styles.nameActionLabel}>Try again</Text>
+                  </Pressable>
+                </View>
+              )}
             </View>
 
             <View
@@ -314,6 +344,29 @@ const styles = StyleSheet.create({
     color: Brand.colors.plumSoft,
     fontSize: 16,
     lineHeight: 23,
+  },
+  nameNotice: {
+    alignItems: 'flex-start',
+    gap: 5,
+  },
+  nameNoticeText: {
+    color: Brand.colors.plumSoft,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  nameAction: {
+    minHeight: 48,
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 15,
+    paddingHorizontal: 4,
+  },
+  nameActionLabel: {
+    color: Brand.colors.plum,
+    fontSize: 14,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
   },
   streak: {
     minWidth: 76,
