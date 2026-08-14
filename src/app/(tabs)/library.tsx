@@ -117,7 +117,7 @@ export default function LibraryScreen() {
         currentSources.filter((currentSource) => currentSource.id !== source.id),
       );
     } catch {
-      setActionError('We couldn’t delete that source just yet. Please try again.');
+      setActionError('We couldn’t delete that lesson just yet. Please try again.');
     } finally {
       deletingSourceRef.current = null;
       setDeletingId(null);
@@ -150,7 +150,7 @@ export default function LibraryScreen() {
     return (
       <View style={styles.sourceCard}>
         <Pressable
-          accessibilityHint="Shows this saved source’s details"
+          accessibilityHint="Shows this lesson’s overview"
           accessibilityLabel={sourceDetailsAccessibilityLabel}
           accessibilityRole="button"
           onPress={() => openSourceDetails(item.id)}
@@ -182,8 +182,8 @@ export default function LibraryScreen() {
         </Pressable>
 
         <Pressable
-          accessibilityHint="Asks for confirmation before removing this source from this device"
-          accessibilityLabel={`Delete ${item.label}`}
+          accessibilityHint="Asks for confirmation before removing this lesson from this device"
+          accessibilityLabel={`Delete lesson ${item.label}`}
           accessibilityRole="button"
           accessibilityState={{ busy: isDeleting, disabled: isDeleteDisabled }}
           disabled={isDeleteDisabled}
@@ -193,7 +193,7 @@ export default function LibraryScreen() {
             isDeleteDisabled && styles.deleteButtonDisabled,
             pressed && !isDeleteDisabled && styles.buttonPressed,
           ]}>
-          <Text style={styles.deleteButtonLabel}>{isDeleting ? 'Deleting…' : 'Delete source'}</Text>
+          <Text style={styles.deleteButtonLabel}>{isDeleting ? 'Deleting…' : 'Delete lesson'}</Text>
         </Pressable>
       </View>
     );
@@ -215,26 +215,26 @@ export default function LibraryScreen() {
 
         {!isLoading && !loadError && (
           <Text accessibilityLiveRegion="polite" style={styles.sourceCount}>
-            {sources.length} {sources.length === 1 ? 'SOURCE' : 'SOURCES'}
+            {sources.length} {sources.length === 1 ? 'LESSON' : 'LESSONS'}
           </Text>
         )}
       </View>
 
       <View style={styles.headingGroup}>
-        <Text style={styles.eyebrow}>YOUR SOURCES</Text>
+        <Text style={styles.eyebrow}>YOUR LESSONS</Text>
         <Text accessibilityRole="header" style={[styles.title, isNarrow && styles.titleNarrow]}>
           Library
         </Text>
-        <Text style={styles.description}>Sources you save stay on this device.</Text>
+        <Text style={styles.description}>Your lessons stay on this device.</Text>
       </View>
 
       {!isLoading && !loadError && sources.length > 0 && (
         <Pressable
-          accessibilityHint="Opens the Add Source flow"
+          accessibilityHint="Opens the new lesson flow"
           accessibilityRole="button"
           onPress={openAddSource}
           style={({ pressed }) => [styles.addSourceButton, pressed && styles.buttonPressed]}>
-          <Text style={styles.addSourceButtonLabel}>＋ Add another source</Text>
+          <Text style={styles.addSourceButtonLabel}>＋ New lesson</Text>
         </Pressable>
       )}
 
@@ -284,14 +284,14 @@ export default function LibraryScreen() {
       </View>
       <Text style={styles.emptyTitle}>Nothing in your Library yet.</Text>
       <Text style={styles.emptyBody}>
-        Saved video and webpage links will appear here. Add one when you’re ready.
+        Lessons you create from video and webpage links will appear here. Create one when you’re ready.
       </Text>
       <Pressable
-        accessibilityHint="Opens the Add Source flow"
+        accessibilityHint="Opens the new lesson flow"
         accessibilityRole="button"
         onPress={openAddSource}
         style={({ pressed }) => [styles.emptyButton, pressed && styles.buttonPressed]}>
-        <Text style={styles.emptyButtonLabel}>＋ Add your first source</Text>
+        <Text style={styles.emptyButtonLabel}>＋ Create your first lesson</Text>
       </Pressable>
     </View>
   );
@@ -327,7 +327,7 @@ export default function LibraryScreen() {
             <View accessibilityViewIsModal style={styles.confirmationCard}>
               <View style={styles.confirmationCopy}>
                 <Text accessibilityRole="header" style={styles.confirmationTitle}>
-                  Delete source?
+                  Delete lesson?
                 </Text>
                 <Text style={styles.confirmationBody}>
                   Remove “{pendingDeleteSource?.label}” from your Library? This can’t be undone.
@@ -336,7 +336,7 @@ export default function LibraryScreen() {
 
               <View style={styles.confirmationActions}>
                 <Pressable
-                  accessibilityHint="Keeps this source in your Library"
+                  accessibilityHint="Keeps this lesson in your Library"
                   accessibilityRole="button"
                   accessibilityState={{ disabled: deletingId !== null }}
                   disabled={deletingId !== null}
@@ -346,12 +346,16 @@ export default function LibraryScreen() {
                     deletingId !== null && styles.confirmationButtonDisabled,
                     pressed && deletingId === null && styles.buttonPressed,
                   ]}>
-                  <Text style={styles.keepButtonLabel}>Keep source</Text>
+                  <Text style={styles.keepButtonLabel}>Keep lesson</Text>
                 </Pressable>
 
                 <Pressable
-                  accessibilityHint="Permanently removes this source from this device"
-                  accessibilityLabel={`Delete ${pendingDeleteSource?.label ?? 'source'}`}
+                  accessibilityHint="Permanently removes this lesson from this device"
+                  accessibilityLabel={
+                    pendingDeleteSource === null
+                      ? 'Delete lesson'
+                      : `Delete lesson ${pendingDeleteSource.label}`
+                  }
                   accessibilityRole="button"
                   accessibilityState={{ busy: deletingId !== null, disabled: deletingId !== null }}
                   disabled={deletingId !== null}

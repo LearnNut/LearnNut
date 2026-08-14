@@ -26,12 +26,12 @@ const stepContent = [
     description: 'Paste a video or webpage URL. You can review it before saving it on this device.',
   },
   {
-    eyebrow: 'LABEL IT',
-    description: 'Give the source a clear label and add an optional folder name.',
+    eyebrow: 'NAME THE LESSON',
+    description: 'Give the lesson a clear title and add an optional folder name.',
   },
   {
     eyebrow: 'LOCAL PREVIEW',
-    description: 'Check the details below, then save this source to your Library on this device.',
+    description: 'Check the details below, then save this lesson to your Library on this device.',
   },
 ] as const;
 
@@ -65,7 +65,7 @@ export default function AddSourceScreen() {
 
   useEffect(() => {
     scrollViewRef.current?.scrollTo({ animated: false, y: 0 });
-    AccessibilityInfo.announceForAccessibility(`Add Source, step ${step + 1} of ${stepContent.length}`);
+    AccessibilityInfo.announceForAccessibility(`New lesson, step ${step + 1} of ${stepContent.length}`);
   }, [step]);
 
   useFocusEffect(
@@ -163,7 +163,7 @@ export default function AddSourceScreen() {
     } catch {
       isSavingRef.current = false;
       setIsSaving(false);
-      setSaveError('We couldn’t save this source just yet. Please try again.');
+      setSaveError('We couldn’t save this lesson just yet. Please try again.');
       return;
     }
 
@@ -187,7 +187,7 @@ export default function AddSourceScreen() {
               <View style={styles.topRow}>
                 <Pressable
                   accessibilityHint={
-                    step === 0 ? 'Returns to the previous screen' : `Returns to Add Source step ${step}`
+                    step === 0 ? 'Returns to the previous screen' : `Returns to new lesson step ${step}`
                   }
                   accessibilityLabel="Back"
                   accessibilityRole="button"
@@ -211,7 +211,7 @@ export default function AddSourceScreen() {
 
               <View
                 accessible
-                accessibilityLabel={`Add Source progress, step ${step + 1} of ${stepContent.length}`}
+                accessibilityLabel={`New lesson progress, step ${step + 1} of ${stepContent.length}`}
                 accessibilityRole="progressbar"
                 accessibilityValue={{ max: stepContent.length, min: 1, now: step + 1 }}
                 style={styles.progressTrack}>
@@ -256,7 +256,7 @@ export default function AddSourceScreen() {
                             : 'Paste the full link, including http:// or https://.'
                         }
                         kind="url"
-                        label="Video or webpage URL"
+                        label="Original material"
                         maxLength={SOURCE_LIMITS.url}
                         onBlur={() => setHasUrlBeenBlurred(true)}
                         onChangeText={(value) => {
@@ -271,9 +271,9 @@ export default function AddSourceScreen() {
                     {step === 1 && (
                       <View style={styles.fields}>
                         <FormField
-                          accessibilityHint="Enter a short name for this source"
-                          helper="Required. Choose a name you will recognize later."
-                          label="Source label"
+                          accessibilityHint="Enter a short title for this lesson"
+                          helper="Required. Choose a title you will recognize later."
+                          label="Lesson title"
                           maxLength={SOURCE_LIMITS.label}
                           onChangeText={setSourceLabel}
                           placeholder="E.g. How memory works"
@@ -281,7 +281,7 @@ export default function AddSourceScreen() {
                         />
 
                         <FormField
-                          accessibilityHint="Optionally enter a folder name for this source"
+                          accessibilityHint="Optionally enter a folder name for this lesson"
                           helper="Optional. Leave this blank if you do not need a folder."
                           label="Folder name"
                           maxLength={SOURCE_LIMITS.folder}
@@ -296,9 +296,9 @@ export default function AddSourceScreen() {
                     {step === 2 && (
                       <View style={styles.previewSection}>
                         <View style={styles.previewCard}>
-                          <PreviewItem label="URL" value={trimmedUrl} />
+                          <PreviewItem label="Original material" value={trimmedUrl} />
                           <View style={styles.previewDivider} />
-                          <PreviewItem label="Label" value={trimmedLabel} />
+                          <PreviewItem label="Lesson title" value={trimmedLabel} />
                           <View style={styles.previewDivider} />
                           <PreviewItem label="Folder" value={trimmedFolder || 'No folder'} />
                         </View>
@@ -326,10 +326,10 @@ export default function AddSourceScreen() {
                       <Pressable
                         accessibilityHint={
                           step === 2
-                            ? 'Saves this source on this device and opens the Library'
+                            ? 'Saves this lesson on this device and opens the Library'
                             : step === 1
-                              ? 'Opens a local preview of the source details'
-                              : 'Continues to source labeling'
+                              ? 'Opens a local preview of the lesson overview'
+                              : 'Continues to the lesson title'
                         }
                         accessibilityRole="button"
                         accessibilityState={{ busy: isSaving, disabled: isActionDisabled }}
@@ -355,7 +355,7 @@ export default function AddSourceScreen() {
                           {step === 2
                             ? isSaving
                               ? 'Saving…'
-                              : 'Save to Library'
+                              : 'Save lesson'
                             : step === 1
                               ? 'Continue to preview'
                               : 'Continue'}

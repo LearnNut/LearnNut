@@ -25,9 +25,9 @@ import {
 import { useAuth } from '@/providers/auth-provider';
 
 const howItWorks = [
-  ['01', 'Add', 'Save a webpage or video link on this device.'],
-  ['02', 'Find', 'Search by label, folder or URL, or browse your Library.'],
-  ['03', 'Return', 'Open the source details and revisit the original whenever you’re ready.'],
+  ['01', 'Add', 'Create a lesson from a webpage or video link on this device.'],
+  ['02', 'Find', 'Search your lessons by name, folder or URL, or browse your Library.'],
+  ['03', 'Return', 'Open the lesson overview and revisit the original material whenever you’re ready.'],
 ] as const;
 
 export default function MeScreen() {
@@ -237,7 +237,7 @@ export default function MeScreen() {
               <Text selectable style={styles.accountEmail}>
                 {user?.email ?? 'LearnNut account'}
               </Text>
-              <Text style={styles.accountNote}>Your saved sources remain local to this device.</Text>
+              <Text style={styles.accountNote}>Your lessons remain local to this device.</Text>
 
               {displayNameError !== null && (
                 <View style={styles.nameLoadError}>

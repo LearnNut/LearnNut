@@ -94,7 +94,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="add-source"
         options={{
-          tabBarAccessibilityLabel: 'Add source tab',
+          tabBarAccessibilityLabel: 'New lesson tab',
           tabBarIcon: ({ focused }) => <AddTabIcon focused={focused} />,
           tabBarIconStyle: styles.addTabIconContainer,
           tabBarLabel: 'Add',

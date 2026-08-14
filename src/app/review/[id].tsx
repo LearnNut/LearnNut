@@ -282,11 +282,11 @@ export default function ReviewScreen() {
     <View style={styles.stateActions}>
       {includeViewSource && source !== null && (
         <Pressable
-          accessibilityHint="Opens this saved source’s details"
+          accessibilityHint="Opens this lesson’s overview"
           accessibilityRole="button"
           onPress={viewSource}
           style={({ pressed }) => [styles.statePrimaryButton, pressed && styles.buttonPressed]}>
-          <Text style={styles.statePrimaryButtonLabel}>View source</Text>
+          <Text style={styles.statePrimaryButtonLabel}>Lesson overview</Text>
         </Pressable>
       )}
       <Pressable
@@ -321,7 +321,7 @@ export default function ReviewScreen() {
           style={styles.stateCard}>
           <ActivityIndicator color={Brand.colors.plum} size="large" />
           <Text style={styles.stateTitle}>Opening your review…</Text>
-          <Text style={styles.stateBody}>Reading this source from your device.</Text>
+          <Text style={styles.stateBody}>Loading this lesson from your device.</Text>
         </View>
       );
     }
@@ -337,7 +337,7 @@ export default function ReviewScreen() {
               <Text style={styles.stateMarkLabel}>?</Text>
             </View>
             <Text accessibilityRole="header" style={styles.stateTitle}>
-              We couldn’t find that source.
+              We couldn’t find that lesson.
             </Text>
             <Text style={styles.stateBody}>
               It may have been removed from this device, or the review link may be invalid.
@@ -407,7 +407,7 @@ export default function ReviewScreen() {
                 You’re all caught up.
               </Text>
               <Text style={styles.stateBody}>
-                This source is not ready for another review yet. Its next local review is scheduled
+                This lesson is not ready for another review yet. Its next local review is scheduled
                 for {nextDueDate}.
               </Text>
               <View
@@ -420,14 +420,14 @@ export default function ReviewScreen() {
             </View>
             <View style={styles.stateActions}>
               <Pressable
-                accessibilityHint="Opens this saved source’s details"
+                accessibilityHint="Opens this lesson’s overview"
                 accessibilityRole="button"
                 onPress={viewSource}
                 style={({ pressed }) => [
                   styles.statePrimaryButton,
                   pressed && styles.buttonPressed,
                 ]}>
-                <Text style={styles.statePrimaryButtonLabel}>View source</Text>
+                <Text style={styles.statePrimaryButtonLabel}>Lesson overview</Text>
               </Pressable>
             </View>
           </View>
@@ -445,10 +445,10 @@ export default function ReviewScreen() {
             </View>
             <Text style={styles.stateEyebrow}>NOT READY YET</Text>
             <Text accessibilityRole="header" style={styles.stateTitle}>
-              This source isn’t ready for review.
+              This lesson isn’t ready for review.
             </Text>
             <Text style={styles.stateBody}>
-              Open the source details and mark it ready before starting a local review.
+              Open the lesson overview and mark it ready before starting a local review.
             </Text>
           </View>
           {renderStateActions(true)}
@@ -491,8 +491,8 @@ export default function ReviewScreen() {
             </Text>
             <Text style={styles.successBody}>
               {completedReview.outcome === 'remembered'
-                ? 'This source will be due again in 7 days.'
-                : 'This source will be due again in 1 day.'}
+                ? 'This lesson will be due again in 7 days.'
+                : 'This lesson will be due again in 1 day.'}
             </Text>
 
             <View accessible accessibilityLabel={`Next review ${nextDueDate}`} style={styles.dateCard}>
@@ -512,11 +512,11 @@ export default function ReviewScreen() {
               <Text style={styles.primaryButtonLabel}>Home</Text>
             </Pressable>
             <Pressable
-              accessibilityHint="Opens this saved source’s details"
+              accessibilityHint="Opens this lesson’s overview"
               accessibilityRole="button"
               onPress={viewSource}
               style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}>
-              <Text style={styles.secondaryButtonLabel}>View source</Text>
+              <Text style={styles.secondaryButtonLabel}>Lesson overview</Text>
             </Pressable>
           </View>
         </View>
@@ -546,7 +546,8 @@ export default function ReviewScreen() {
           <Text style={styles.sectionEyebrow}>A QUICK SELF-CHECK</Text>
           <Text style={styles.promptTitle}>What do you remember?</Text>
           <Text style={styles.promptBody}>
-            Before reopening the source, take a moment to recall what stood out or what you learned.
+            Before reopening the original material, take a moment to recall what stood out or what
+            you learned.
           </Text>
           <View style={styles.honestyNote}>
             <Text style={styles.honestyNoteText}>

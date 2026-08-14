@@ -63,7 +63,7 @@ export default function SearchScreen() {
       }
     } catch {
       if (loadRequestRef.current === requestId) {
-        setLoadError('We couldn’t search your local Library. Please try again.');
+        setLoadError('We couldn’t search your lessons. Please try again.');
       }
     } finally {
       if (loadRequestRef.current === requestId) {
@@ -113,7 +113,7 @@ export default function SearchScreen() {
 
     return (
       <Pressable
-        accessibilityHint="Shows this saved source’s details"
+        accessibilityHint="Shows this lesson’s overview"
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
         onPress={() => openSourceDetails(item.id)}
@@ -148,7 +148,7 @@ export default function SearchScreen() {
     emptyContent = (
       <View
         accessible
-        accessibilityLabel="Loading saved sources"
+        accessibilityLabel="Loading your lessons"
         accessibilityLiveRegion="polite"
         accessibilityRole="progressbar"
         accessibilityState={{ busy: true }}
@@ -166,7 +166,7 @@ export default function SearchScreen() {
           <Text style={styles.stateBody}>{loadError}</Text>
         </View>
         <Pressable
-          accessibilityHint="Tries to load saved sources again"
+          accessibilityHint="Tries to load your lessons again"
           accessibilityRole="button"
           onPress={() => void loadSources()}
           style={({ pressed }) => [styles.stateButton, pressed && styles.buttonPressed]}>
@@ -183,15 +183,15 @@ export default function SearchScreen() {
         <View style={styles.stateCopy}>
           <Text style={styles.stateTitle}>Nothing to search yet.</Text>
           <Text style={styles.stateBody}>
-            Add a webpage or video link, then find it here by label, folder or URL.
+            Create a lesson from a webpage or video link, then find it here by title, folder or URL.
           </Text>
         </View>
         <Pressable
-          accessibilityHint="Opens the Add Source flow"
+          accessibilityHint="Opens the new lesson flow"
           accessibilityRole="button"
           onPress={() => router.navigate('/add-source')}
           style={({ pressed }) => [styles.stateButton, pressed && styles.buttonPressed]}>
-          <Text style={styles.stateButtonLabel}>Add your first source</Text>
+          <Text style={styles.stateButtonLabel}>Create your first lesson</Text>
         </Pressable>
       </View>
     );
@@ -206,8 +206,8 @@ export default function SearchScreen() {
           />
         </View>
         <View style={styles.stateCopy}>
-          <Text style={styles.stateTitle}>Search your saved sources.</Text>
-          <Text style={styles.stateBody}>Try a label, folder name, website or part of a URL.</Text>
+          <Text style={styles.stateTitle}>Search your lessons.</Text>
+          <Text style={styles.stateBody}>Try a lesson title, folder name, website or part of a URL.</Text>
         </View>
       </View>
     );
@@ -216,8 +216,8 @@ export default function SearchScreen() {
       <View style={styles.stateCard}>
         <View accessibilityLiveRegion="polite" style={styles.stateCopy}>
           <Text style={styles.stateEyebrow}>NO MATCHES</Text>
-          <Text style={styles.stateTitle}>We couldn’t find that in your Library.</Text>
-          <Text style={styles.stateBody}>Try another label, folder or URL.</Text>
+          <Text style={styles.stateTitle}>We couldn’t find that in your lessons.</Text>
+          <Text style={styles.stateBody}>Try another lesson title, folder or URL.</Text>
         </View>
         <Pressable
           accessibilityHint="Clears the current search"
@@ -233,11 +233,13 @@ export default function SearchScreen() {
   const listHeader = (
     <View style={styles.header}>
       <View style={styles.headingGroup}>
-        <Text style={styles.eyebrow}>FIND A SOURCE</Text>
+        <Text style={styles.eyebrow}>YOUR LESSONS</Text>
         <Text accessibilityRole="header" style={[styles.title, isNarrow && styles.titleNarrow]}>
-          Search
+          Search your lessons
         </Text>
-        <Text style={styles.description}>Search labels, folders and URLs saved on this device.</Text>
+        <Text style={styles.description}>
+          Search lesson titles, folders and original URLs saved on this device.
+        </Text>
       </View>
 
       <View style={styles.searchField}>
@@ -248,14 +250,14 @@ export default function SearchScreen() {
           tintColor={Brand.colors.plum}
         />
         <TextInput
-          accessibilityHint="Searches source labels, folders and URLs as you type"
-          accessibilityLabel="Search saved sources"
+          accessibilityHint="Searches lesson titles, folders and original URLs as you type"
+          accessibilityLabel="Search your lessons"
           autoCapitalize="none"
           autoCorrect={false}
           clearButtonMode="never"
           enterKeyHint="search"
           onChangeText={setQuery}
-          placeholder="Label, folder or URL"
+          placeholder="Lesson title, folder or URL"
           placeholderTextColor={Brand.colors.plumSoft}
           returnKeyType="search"
           spellCheck={false}

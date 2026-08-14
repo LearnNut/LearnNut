@@ -68,6 +68,7 @@ export default function SourceDetailsScreen() {
   const [source, setSource] = useState<SavedSource | null>(null);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [actionError, setActionError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isMarkingReady, setIsMarkingReady] = useState(false);
@@ -83,6 +84,7 @@ export default function SourceDetailsScreen() {
     const requestId = loadRequestRef.current + 1;
     loadRequestRef.current = requestId;
     setActionError(null);
+    setDeleteError(null);
     setActionSuccess(null);
     setSource(null);
 
@@ -107,7 +109,7 @@ export default function SourceDetailsScreen() {
 
       setSource(savedSource);
       setLoadState('ready');
-      AccessibilityInfo.announceForAccessibility(`Opened source details for ${savedSource.label}`);
+      AccessibilityInfo.announceForAccessibility(`Opened lesson overview for ${savedSource.label}`);
     } catch {
       if (loadRequestRef.current === requestId) {
         setLoadState('error');
@@ -171,6 +173,7 @@ export default function SourceDetailsScreen() {
     isOpeningRef.current = true;
     setIsOpening(true);
     setActionError(null);
+    setDeleteError(null);
     setActionSuccess(null);
 
     try {
@@ -200,6 +203,7 @@ export default function SourceDetailsScreen() {
     isMarkingReadyRef.current = true;
     setIsMarkingReady(true);
     setActionError(null);
+    setDeleteError(null);
     setActionSuccess(null);
 
     try {
@@ -217,7 +221,7 @@ export default function SourceDetailsScreen() {
 
       if (updatedSource.review === undefined) {
         setActionError(
-          'We couldn’t confirm that this source is ready to review. Please try again.',
+          'We couldn’t confirm that this lesson is ready to review. Please try again.',
         );
         return;
       }
@@ -225,12 +229,12 @@ export default function SourceDetailsScreen() {
       setSource(updatedSource);
       const successMessage = isSourceReviewDue(updatedSource)
         ? 'Ready to review. You can start a review now.'
-        : `This source is already scheduled for ${getDisplayReviewDate(updatedSource.review.dueAt)}.`;
+        : `This lesson is already scheduled for ${getDisplayReviewDate(updatedSource.review.dueAt)}.`;
       setActionSuccess(successMessage);
       AccessibilityInfo.announceForAccessibility(successMessage);
     } catch {
       if (loadRequestRef.current === loadRequestId) {
-        setActionError('We couldn’t make this source ready to review just yet. Please try again.');
+        setActionError('We couldn’t make this lesson ready to review just yet. Please try again.');
       }
     } finally {
       isMarkingReadyRef.current = false;
@@ -257,6 +261,7 @@ export default function SourceDetailsScreen() {
     isStartingReviewRef.current = true;
     setIsStartingReview(true);
     setActionError(null);
+    setDeleteError(null);
     setActionSuccess(null);
 
     try {
@@ -279,6 +284,7 @@ export default function SourceDetailsScreen() {
     isDeletingRef.current = true;
     setIsDeleting(true);
     setActionError(null);
+    setDeleteError(null);
     setActionSuccess(null);
 
     try {
@@ -286,7 +292,7 @@ export default function SourceDetailsScreen() {
     } catch {
       isDeletingRef.current = false;
       setIsDeleting(false);
-      setActionError('We couldn’t delete that source just yet. Please try again.');
+      setDeleteError('We couldn’t delete that lesson just yet. Please try again.');
       return;
     }
 
@@ -310,7 +316,7 @@ export default function SourceDetailsScreen() {
     isDeletePromptOpenRef.current = true;
 
     Alert.alert(
-      'Delete source?',
+      'Delete lesson?',
       `Remove “${sourceToDelete.label}” from your Library? This can’t be undone.`,
       [
         {
@@ -318,7 +324,7 @@ export default function SourceDetailsScreen() {
             isDeletePromptOpenRef.current = false;
           },
           style: 'cancel',
-          text: 'Keep source',
+          text: 'Keep lesson',
         },
         {
           onPress: () => {
@@ -343,13 +349,13 @@ export default function SourceDetailsScreen() {
       return (
         <View
           accessible
-          accessibilityLabel="Loading source details"
+          accessibilityLabel="Loading lesson overview"
           accessibilityLiveRegion="polite"
           accessibilityRole="progressbar"
           accessibilityState={{ busy: true }}
           style={styles.stateCard}>
           <ActivityIndicator color={Brand.colors.plum} size="large" />
-          <Text style={styles.stateTitle}>Opening source details…</Text>
+          <Text style={styles.stateTitle}>Opening lesson overview…</Text>
         </View>
       );
     }
@@ -365,14 +371,14 @@ export default function SourceDetailsScreen() {
               <Text style={styles.stateMarkLabel}>?</Text>
             </View>
             <Text accessibilityRole="header" style={styles.stateTitle}>
-              We couldn’t find that source.
+              We couldn’t find that lesson.
             </Text>
             <Text style={styles.stateBody}>
-              It may have been removed from this device, or the source link may be invalid.
+              It may have been removed from this device, or the lesson link may be invalid.
             </Text>
           </View>
           <Pressable
-            accessibilityHint="Returns to your saved sources"
+            accessibilityHint="Returns to your lessons"
             accessibilityRole="button"
             onPress={returnToLibrary}
             style={({ pressed }) => [styles.statePrimaryButton, pressed && styles.buttonPressed]}>
@@ -389,17 +395,17 @@ export default function SourceDetailsScreen() {
             accessibilityLiveRegion="polite"
             accessibilityRole="alert"
             style={styles.stateMessage}>
-            <Text style={styles.stateEyebrow}>LOCAL SOURCE</Text>
+            <Text style={styles.stateEyebrow}>LOCAL LESSON</Text>
             <Text accessibilityRole="header" style={styles.stateTitle}>
               We hit a small snag.
             </Text>
             <Text style={styles.stateBody}>
-              We couldn’t open this saved source. Please try again.
+              We couldn’t open this saved lesson. Please try again.
             </Text>
           </View>
           <View style={styles.stateActions}>
             <Pressable
-              accessibilityHint="Tries to load this source again"
+              accessibilityHint="Tries to load this lesson again"
               accessibilityRole="button"
               onPress={() => {
                 void loadSource();
@@ -408,7 +414,7 @@ export default function SourceDetailsScreen() {
               <Text style={styles.statePrimaryButtonLabel}>Try again</Text>
             </Pressable>
             <Pressable
-              accessibilityHint="Returns to your saved sources"
+              accessibilityHint="Returns to your lessons"
               accessibilityRole="button"
               onPress={returnToLibrary}
               style={({ pressed }) => [
@@ -433,34 +439,17 @@ export default function SourceDetailsScreen() {
     return (
       <View style={styles.detailsContent}>
         <View style={styles.heroCard}>
-          <Text style={styles.heroEyebrow}>SAVED WEBSITE</Text>
+          <Text style={styles.heroEyebrow}>LESSON</Text>
           <Text
             accessibilityRole="header"
             style={[styles.sourceTitle, isNarrow && styles.sourceTitleNarrow]}>
             {source.label}
           </Text>
-          <Text style={styles.heroDomain}>{domain}</Text>
           {source.folder && (
             <View style={styles.folderChip}>
               <Text style={styles.folderChipLabel}>{source.folder}</Text>
             </View>
           )}
-        </View>
-
-        <View style={styles.infoCard}>
-          <Text style={styles.sectionEyebrow}>SOURCE INFORMATION</Text>
-          <View style={styles.infoRows}>
-            <DetailRow label="Source type" value="Website" />
-            <DetailRow label="Website" value={domain} />
-            <DetailRow label="Date added" value={getDisplayDate(source.createdAt)} />
-          </View>
-
-          <View style={styles.urlSection}>
-            <Text style={styles.urlLabel}>ORIGINAL URL</Text>
-            <Text selectable style={styles.urlValue}>
-              {source.url}
-            </Text>
-          </View>
         </View>
 
         <View style={styles.reviewCard}>
@@ -470,15 +459,15 @@ export default function SourceDetailsScreen() {
             <>
               <View style={styles.reviewCopy}>
                 <Text accessibilityRole="header" style={styles.reviewTitle}>
-                  Ready to review this source?
+                  Ready to review this lesson?
                 </Text>
                 <Text style={styles.reviewBody}>
-                  Opt in when you want LearnNut to add this source to your local review schedule.
+                  Add this lesson to your local review schedule whenever you’re ready.
                 </Text>
               </View>
 
               <Pressable
-                accessibilityHint="Adds this source to your local review schedule"
+                accessibilityHint="Adds this lesson to your local review schedule"
                 accessibilityLabel={`Mark ${source.label} ready to review`}
                 accessibilityRole="button"
                 accessibilityState={{ busy: isMarkingReady, disabled: actionsDisabled }}
@@ -527,13 +516,13 @@ export default function SourceDetailsScreen() {
                 <Text style={styles.reviewBody}>
                   {reviewIsDue
                     ? 'A review is ready whenever you are.'
-                    : 'You’re on track. Come back when this source is due for its next review.'}
+                    : 'You’re on track. Come back when this lesson is due for its next review.'}
                 </Text>
               </View>
 
               {reviewIsDue && (
                 <Pressable
-                  accessibilityHint="Opens the review for this source"
+                  accessibilityHint="Opens the review for this lesson"
                   accessibilityLabel={`Start review for ${source.label}`}
                   accessibilityRole="button"
                   accessibilityState={{ busy: isStartingReview, disabled: actionsDisabled }}
@@ -565,10 +554,19 @@ export default function SourceDetailsScreen() {
           </View>
         )}
 
-        <View style={styles.actions}>
+        <View style={styles.learningActionsCard}>
+          <View style={styles.learningActionsCopy}>
+            <Text accessibilityRole="header" style={styles.sectionEyebrow}>
+              LEARNING ACTIONS
+            </Text>
+            <Text style={styles.learningActionsBody}>
+              Return to the original material whenever you want to revisit the lesson.
+            </Text>
+          </View>
+
           <Pressable
-            accessibilityHint="Opens this website outside LearnNut"
-            accessibilityLabel={`Open ${source.label} in its original app or browser`}
+            accessibilityHint="Opens the original material outside LearnNut"
+            accessibilityLabel={`Open original for ${source.label}`}
             accessibilityRole="link"
             accessibilityState={{ busy: isOpening, disabled: actionsDisabled }}
             disabled={actionsDisabled}
@@ -580,26 +578,48 @@ export default function SourceDetailsScreen() {
               actionsDisabled && styles.buttonDisabled,
               pressed && !actionsDisabled && styles.buttonPressed,
             ]}>
-            <Text style={styles.openButtonLabel}>
-              {isOpening ? 'Opening…' : '↗ Open original source'}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            accessibilityHint="Asks for confirmation before removing this source from this device"
-            accessibilityLabel={`Delete ${source.label}`}
-            accessibilityRole="button"
-            accessibilityState={{ busy: isDeleting, disabled: actionsDisabled }}
-            disabled={actionsDisabled}
-            onPress={confirmDelete}
-            style={({ pressed }) => [
-              styles.deleteButton,
-              actionsDisabled && styles.buttonDisabled,
-              pressed && !actionsDisabled && styles.buttonPressed,
-            ]}>
-            <Text style={styles.deleteButtonLabel}>{isDeleting ? 'Deleting…' : 'Delete source'}</Text>
+            <Text style={styles.openButtonLabel}>{isOpening ? 'Opening…' : '↗ Open original'}</Text>
           </Pressable>
         </View>
+
+        <View style={styles.originalMaterialCard}>
+          <Text accessibilityRole="header" style={styles.sectionEyebrow}>
+            ORIGINAL MATERIAL
+          </Text>
+          <View style={styles.originalMaterialMetadata}>
+            <Text style={styles.originalMaterialType}>Website · {domain}</Text>
+            <Text style={styles.originalMaterialDate}>
+              Added {getDisplayDate(source.createdAt)}
+            </Text>
+          </View>
+          <View style={styles.urlSection}>
+            <Text style={styles.urlLabel}>WEB ADDRESS</Text>
+            <Text selectable style={styles.urlValue}>
+              {source.url}
+            </Text>
+          </View>
+        </View>
+
+        {deleteError && (
+          <View accessibilityLiveRegion="polite" accessibilityRole="alert" style={styles.inlineError}>
+            <Text style={styles.inlineErrorText}>{deleteError}</Text>
+          </View>
+        )}
+
+        <Pressable
+          accessibilityHint="Asks for confirmation before removing this lesson from this device"
+          accessibilityLabel={`Delete lesson ${source.label}`}
+          accessibilityRole="button"
+          accessibilityState={{ busy: isDeleting, disabled: actionsDisabled }}
+          disabled={actionsDisabled}
+          onPress={confirmDelete}
+          style={({ pressed }) => [
+            styles.deleteButton,
+            actionsDisabled && styles.buttonDisabled,
+            pressed && !actionsDisabled && styles.buttonPressed,
+          ]}>
+          <Text style={styles.deleteButtonLabel}>{isDeleting ? 'Deleting…' : 'Delete lesson'}</Text>
+        </Pressable>
       </View>
     );
   };
@@ -630,21 +650,12 @@ export default function SourceDetailsScreen() {
               </Text>
             </Pressable>
 
-            <Text style={styles.screenEyebrow}>SOURCE DETAILS</Text>
+            <Text style={styles.screenEyebrow}>LESSON OVERVIEW</Text>
           </View>
 
           {renderState()}
         </ScrollView>
       </SafeAreaView>
-    </View>
-  );
-}
-
-function DetailRow({ label, value }: Readonly<{ label: string; value: string }>) {
-  return (
-    <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue}>{value}</Text>
     </View>
   );
 }
@@ -731,11 +742,6 @@ const styles = StyleSheet.create({
     fontSize: 30,
     lineHeight: 36,
   },
-  heroDomain: {
-    color: Brand.colors.creamMuted,
-    fontSize: 16,
-    lineHeight: 23,
-  },
   folderChip: {
     maxWidth: '100%',
     alignSelf: 'flex-start',
@@ -752,51 +758,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 17,
   },
-  infoCard: {
-    gap: 16,
-    backgroundColor: Brand.colors.white,
-    borderColor: Brand.colors.cream,
-    borderRadius: 22,
-    borderWidth: 1,
-    padding: 18,
-  },
   sectionEyebrow: {
     color: Brand.colors.plumSoft,
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 1.2,
-  },
-  infoRows: {
-    borderColor: Brand.colors.cream,
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  detailRow: {
-    minHeight: 54,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    borderBottomColor: Brand.colors.cream,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  detailLabel: {
-    width: 88,
-    color: Brand.colors.plumSoft,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
-  },
-  detailValue: {
-    flex: 1,
-    minWidth: 0,
-    color: Brand.colors.plum,
-    fontSize: 14,
-    fontWeight: '800',
-    lineHeight: 20,
-    textAlign: 'right',
   },
   urlSection: {
     minWidth: 0,
@@ -906,8 +872,52 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 20,
   },
-  actions: {
-    gap: 10,
+  learningActionsCard: {
+    gap: 14,
+    backgroundColor: Brand.colors.white,
+    borderColor: Brand.colors.cream,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 18,
+  },
+  learningActionsCopy: {
+    gap: 6,
+  },
+  learningActionsBody: {
+    color: Brand.colors.plumSoft,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  originalMaterialCard: {
+    gap: 12,
+    backgroundColor: Brand.colors.white,
+    borderColor: Brand.colors.cream,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+  },
+  originalMaterialMetadata: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    columnGap: 14,
+    rowGap: 5,
+  },
+  originalMaterialType: {
+    flexShrink: 1,
+    color: Brand.colors.plum,
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 20,
+  },
+  originalMaterialDate: {
+    maxWidth: '100%',
+    flexShrink: 1,
+    color: Brand.colors.plumSoft,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   openButton: {
     minHeight: 56,

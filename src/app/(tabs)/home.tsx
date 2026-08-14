@@ -119,7 +119,7 @@ export default function HomeScreen() {
       }
     } catch {
       if (loadRequestRef.current === requestId) {
-        setLoadError('We couldn’t load your saved sources or due reviews just now.');
+        setLoadError('We couldn’t load your lessons or due reviews just now.');
       }
     } finally {
       if (loadRequestRef.current === requestId) {
@@ -201,7 +201,7 @@ export default function HomeScreen() {
 
             <View
               accessible
-              accessibilityLabel={`${streak} day save streak, based on days when you saved a source`}
+              accessibilityLabel={`${streak} day save streak, based on days when you saved a lesson`}
               style={styles.streak}>
               <Text style={styles.streakNumber}>{streak}</Text>
               <Text style={styles.streakLabel}>day save streak</Text>
@@ -209,12 +209,12 @@ export default function HomeScreen() {
           </View>
 
           <Pressable
-            accessibilityHint="Opens the Add Source flow"
+            accessibilityHint="Opens the new lesson flow"
             accessibilityRole="button"
             onPress={() => router.navigate('/add-source')}
             style={({ pressed }) => [styles.primaryAction, pressed && styles.buttonPressed]}>
             <View style={styles.primaryActionCopy}>
-              <Text style={styles.primaryActionEyebrow}>ADD A SOURCE</Text>
+              <Text style={styles.primaryActionEyebrow}>NEW LESSON</Text>
               <Text style={styles.primaryActionLabel}>Start learning</Text>
             </View>
             <Text aria-hidden style={styles.primaryActionArrow}>
@@ -230,7 +230,7 @@ export default function HomeScreen() {
                     Due for review
                   </Text>
                   <Text style={styles.reviewIntro}>
-                    Sources you marked ready for a local check-in.
+                    Lessons you marked ready for a local check-in.
                   </Text>
                 </View>
                 <View
@@ -279,11 +279,11 @@ export default function HomeScreen() {
           <View style={styles.recentSection}>
             <View style={styles.sectionHeader}>
               <Text accessibilityRole="header" style={styles.sectionTitle}>
-                Recent sources
+                Recent lessons
               </Text>
               {!isLoading && loadError === null && sources.length > 0 && (
                 <Pressable
-                  accessibilityHint="Opens all saved sources"
+                  accessibilityHint="Opens all your lessons"
                   accessibilityRole="button"
                   onPress={() => router.navigate('/library')}
                   style={({ pressed }) => [styles.viewAllButton, pressed && styles.buttonPressed]}>
@@ -295,22 +295,22 @@ export default function HomeScreen() {
             {isLoading ? (
               <View
                 accessible
-                accessibilityLabel="Loading saved sources and due reviews"
+                accessibilityLabel="Loading your lessons and due reviews"
                 accessibilityLiveRegion="polite"
                 accessibilityRole="progressbar"
                 accessibilityState={{ busy: true }}
                 style={styles.stateCard}>
                 <ActivityIndicator color={Brand.colors.plum} size="small" />
-                <Text style={styles.stateBody}>Loading your saved sources and review schedule…</Text>
+                <Text style={styles.stateBody}>Loading your lessons and review schedule…</Text>
               </View>
             ) : loadError !== null ? (
               <View style={styles.stateCard}>
                 <View accessibilityLiveRegion="polite" accessibilityRole="alert">
-                  <Text style={styles.stateTitle}>Your saved sources are taking a moment.</Text>
+                  <Text style={styles.stateTitle}>Your lessons are taking a moment.</Text>
                   <Text style={styles.stateBody}>{loadError}</Text>
                 </View>
                 <Pressable
-                  accessibilityHint="Tries to load saved sources and due reviews again"
+                  accessibilityHint="Tries to load your lessons and due reviews again"
                   accessibilityRole="button"
                   onPress={() => void loadSources()}
                   style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}>
@@ -323,8 +323,10 @@ export default function HomeScreen() {
                   <Text style={styles.emptyMarkLabel}>L</Text>
                 </View>
                 <View style={styles.emptyCopy}>
-                  <Text style={styles.stateTitle}>Your recent sources will appear here.</Text>
-                  <Text style={styles.stateBody}>Save a webpage or video link whenever you’re ready.</Text>
+                  <Text style={styles.stateTitle}>Your recent lessons will appear here.</Text>
+                  <Text style={styles.stateBody}>
+                    Create a lesson from a webpage or video link whenever you’re ready.
+                  </Text>
                 </View>
               </View>
             ) : (
@@ -341,7 +343,7 @@ export default function HomeScreen() {
 
                   return (
                     <Pressable
-                      accessibilityHint="Shows this source’s details"
+                      accessibilityHint="Shows this lesson’s overview"
                       accessibilityLabel={accessibilityLabel}
                       accessibilityRole="button"
                       key={source.id}
