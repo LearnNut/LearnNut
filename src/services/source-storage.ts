@@ -9,12 +9,27 @@ export const SOURCE_LIMITS = {
   folder: 100,
 } as const;
 
+export type ReviewOutcome = 'remembered' | 'revisit';
+
+export type SourceReview = Readonly<{
+  readyAt: string;
+  dueAt: string;
+  lastReviewedAt?: string;
+  lastOutcome?: ReviewOutcome;
+}>;
+
+export const SOURCE_REVIEW_INTERVAL_DAYS = {
+  remembered: 7,
+  revisit: 1,
+} as const satisfies Readonly<Record<ReviewOutcome, number>>;
+
 export type SavedSource = Readonly<{
   id: string;
   url: string;
   label: string;
   folder?: string;
   createdAt: string;
+  review?: SourceReview;
 }>;
 
 export type NewSavedSource = Readonly<Pick<SavedSource, 'url' | 'label' | 'folder'>>;
@@ -77,12 +92,73 @@ function isIsoDate(value: string) {
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
 }
 
+function isReviewOutcome(value: unknown): value is ReviewOutcome {
+  return value === 'remembered' || value === 'revisit';
+}
+
+function getScheduledReviewDueAt(reviewedAt: string, outcome: ReviewOutcome) {
+  const reviewedAtTimestamp = Date.parse(reviewedAt);
+  const dueAtTimestamp =
+    reviewedAtTimestamp + SOURCE_REVIEW_INTERVAL_DAYS[outcome] * 24 * 60 * 60 * 1000;
+
+  if (!Number.isFinite(dueAtTimestamp)) {
+    return null;
+  }
+
+  try {
+    return new Date(dueAtTimestamp).toISOString();
+  } catch {
+    return null;
+  }
+}
+
+function isSourceReview(value: unknown): value is SourceReview {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const allowedKeys = new Set(['readyAt', 'dueAt', 'lastReviewedAt', 'lastOutcome']);
+
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
+    return false;
+  }
+
+  const { dueAt, lastOutcome, lastReviewedAt, readyAt } = value;
+
+  if (
+    typeof readyAt !== 'string' ||
+    !isIsoDate(readyAt) ||
+    typeof dueAt !== 'string' ||
+    !isIsoDate(dueAt)
+  ) {
+    return false;
+  }
+
+  const hasLastReviewedAt = lastReviewedAt !== undefined;
+  const hasLastOutcome = lastOutcome !== undefined;
+
+  if (hasLastReviewedAt !== hasLastOutcome) {
+    return false;
+  }
+
+  if (!hasLastReviewedAt) {
+    return dueAt === readyAt;
+  }
+
+  return (
+    typeof lastReviewedAt === 'string' &&
+    isIsoDate(lastReviewedAt) &&
+    isReviewOutcome(lastOutcome) &&
+    dueAt === getScheduledReviewDueAt(lastReviewedAt, lastOutcome)
+  );
+}
+
 function isSavedSource(value: unknown): value is SavedSource {
   if (!isRecord(value)) {
     return false;
   }
 
-  const { createdAt, folder, id, label, url } = value;
+  const { createdAt, folder, id, label, review, url } = value;
 
   return (
     typeof id === 'string' &&
@@ -102,8 +178,16 @@ function isSavedSource(value: unknown): value is SavedSource {
         folder.length > 0 &&
         folder.length <= SOURCE_LIMITS.folder)) &&
     typeof createdAt === 'string' &&
-    isIsoDate(createdAt)
+    isIsoDate(createdAt) &&
+    (review === undefined || isSourceReview(review))
   );
+}
+
+function cloneSavedSource(source: SavedSource): SavedSource {
+  return {
+    ...source,
+    ...(source.review === undefined ? {} : { review: { ...source.review } }),
+  };
 }
 
 async function readStoredSources(): Promise<SavedSource[]> {
@@ -142,7 +226,7 @@ async function readStoredSources(): Promise<SavedSource[]> {
     throw new SourceStorageError('corrupt-data', 'The local Library contains duplicate source IDs.');
   }
 
-  return parsedValue.sources.map((source) => ({ ...source }));
+  return parsedValue.sources.map(cloneSavedSource);
 }
 
 async function writeStoredSources(sources: SavedSource[]) {
@@ -194,6 +278,41 @@ export function getSavedSource(id: string): Promise<SavedSource | null> {
   });
 }
 
+export function isSourceReviewDue(source: SavedSource, now: Date = new Date()) {
+  if (!isSourceReview(source.review)) {
+    return false;
+  }
+
+  const nowTimestamp = now.getTime();
+
+  return Number.isFinite(nowTimestamp) && Date.parse(source.review.dueAt) <= nowTimestamp;
+}
+
+export function getDueReviewSources(
+  sources: readonly SavedSource[],
+  now: Date = new Date(),
+): SavedSource[] {
+  return sources
+    .filter((source) => isSourceReviewDue(source, now))
+    .map(cloneSavedSource)
+    .sort((left, right) => {
+      const dueAtDifference =
+        Date.parse(left.review?.dueAt ?? '') - Date.parse(right.review?.dueAt ?? '');
+
+      if (dueAtDifference !== 0) {
+        return dueAtDifference;
+      }
+
+      const createdAtDifference = Date.parse(left.createdAt) - Date.parse(right.createdAt);
+
+      if (createdAtDifference !== 0) {
+        return createdAtDifference;
+      }
+
+      return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
+    });
+}
+
 export function saveSource(input: NewSavedSource): Promise<SavedSource> {
   return runInOrder(async () => {
     if (
@@ -231,6 +350,99 @@ export function saveSource(input: NewSavedSource): Promise<SavedSource> {
     await writeStoredSources([source, ...existingSources]);
 
     return source;
+  });
+}
+
+export function markSourceReadyForReview(id: string): Promise<SavedSource | null> {
+  return runInOrder(async () => {
+    if (typeof id !== 'string' || id.length === 0 || id !== id.trim()) {
+      throw new SourceStorageError('invalid-source', 'A valid source ID is required.');
+    }
+
+    const existingSources = await readStoredSources();
+    const sourceIndex = existingSources.findIndex((source) => source.id === id);
+
+    if (sourceIndex === -1) {
+      return null;
+    }
+
+    const source = existingSources[sourceIndex];
+
+    if (source.review !== undefined) {
+      return cloneSavedSource(source);
+    }
+
+    const readyAt = new Date().toISOString();
+    const updatedSource: SavedSource = {
+      ...source,
+      review: {
+        readyAt,
+        dueAt: readyAt,
+      },
+    };
+    const updatedSources = [...existingSources];
+    updatedSources[sourceIndex] = updatedSource;
+
+    await writeStoredSources(updatedSources);
+
+    return cloneSavedSource(updatedSource);
+  });
+}
+
+export function recordSourceReviewOutcome(
+  id: string,
+  outcome: ReviewOutcome,
+): Promise<SavedSource | null> {
+  return runInOrder(async () => {
+    if (typeof id !== 'string' || id.length === 0 || id !== id.trim()) {
+      throw new SourceStorageError('invalid-source', 'A valid source ID is required.');
+    }
+
+    if (!isReviewOutcome(outcome)) {
+      throw new SourceStorageError('invalid-source', 'A valid review outcome is required.');
+    }
+
+    const existingSources = await readStoredSources();
+    const sourceIndex = existingSources.findIndex((source) => source.id === id);
+
+    if (sourceIndex === -1) {
+      return null;
+    }
+
+    const source = existingSources[sourceIndex];
+
+    if (source.review === undefined) {
+      throw new SourceStorageError('invalid-source', 'This source is not ready for review.');
+    }
+
+    const reviewedAtDate = new Date();
+
+    if (!isSourceReviewDue(source, reviewedAtDate)) {
+      throw new SourceStorageError('invalid-source', 'This source is not due for review yet.');
+    }
+
+    const lastReviewedAt = reviewedAtDate.toISOString();
+    const dueAt = getScheduledReviewDueAt(lastReviewedAt, outcome);
+
+    if (dueAt === null) {
+      throw new SourceStorageError('invalid-source', 'The next review date could not be scheduled.');
+    }
+
+    const updatedSource: SavedSource = {
+      ...source,
+      review: {
+        readyAt: source.review.readyAt,
+        dueAt,
+        lastReviewedAt,
+        lastOutcome: outcome,
+      },
+    };
+    const updatedSources = [...existingSources];
+    updatedSources[sourceIndex] = updatedSource;
+
+    await writeStoredSources(updatedSources);
+
+    return cloneSavedSource(updatedSource);
   });
 }
 

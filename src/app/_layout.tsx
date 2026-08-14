@@ -42,6 +42,7 @@ function RootNavigator() {
       <Stack.Protected guard={session !== null}>
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="review/[id]" />
         <Stack.Screen name="source/[id]" />
       </Stack.Protected>
     </Stack>

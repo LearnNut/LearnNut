@@ -13,9 +13,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
+import { useReviewScheduleRefresh } from '@/hooks/use-review-schedule-refresh';
 import { getFirstGivenName } from '@/lib/display-name';
 import { useAuth } from '@/providers/auth-provider';
-import { getSavedSources, type SavedSource } from '@/services/source-storage';
+import {
+  getDueReviewSources,
+  getSavedSources,
+  type SavedSource,
+} from '@/services/source-storage';
 
 const RECENT_SOURCE_LIMIT = 3;
 
@@ -32,6 +37,26 @@ function getDisplayDate(createdAt: string) {
     day: 'numeric',
     month: 'short',
   });
+}
+
+function getReviewDueLabel(dueAt: string) {
+  const dueDate = new Date(dueAt);
+  const today = new Date();
+  const dueDay = new Date(
+    dueDate.getFullYear(),
+    dueDate.getMonth(),
+    dueDate.getDate(),
+  ).getTime();
+  const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+
+  if (dueDay === todayDay) {
+    return 'Due today';
+  }
+
+  return `Due ${dueDate.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+  })}`;
 }
 
 function getLocalDayKey(date: Date) {
@@ -94,7 +119,7 @@ export default function HomeScreen() {
       }
     } catch {
       if (loadRequestRef.current === requestId) {
-        setLoadError('We couldn’t load your recent sources just now.');
+        setLoadError('We couldn’t load your saved sources or due reviews just now.');
       }
     } finally {
       if (loadRequestRef.current === requestId) {
@@ -113,7 +138,12 @@ export default function HomeScreen() {
     }, [loadSources]),
   );
 
+  useReviewScheduleRefresh(
+    sources.flatMap((source) => (source.review === undefined ? [] : [source.review.dueAt])),
+  );
+
   const recentSources = sources.slice(0, RECENT_SOURCE_LIMIT);
+  const dueReviewSources = getDueReviewSources(sources);
   const streak = getSavedSourceStreak(sources);
   const firstName = getFirstGivenName(displayName);
   const greeting =
@@ -122,6 +152,13 @@ export default function HomeScreen() {
   const openSourceDetails = (id: string) => {
     router.push({
       pathname: '/source/[id]',
+      params: { id },
+    });
+  };
+
+  const openReview = (id: string) => {
+    router.push({
+      pathname: '/review/[id]',
       params: { id },
     });
   };
@@ -185,6 +222,60 @@ export default function HomeScreen() {
             </Text>
           </Pressable>
 
+          {!isLoading && loadError === null && dueReviewSources.length > 0 && (
+            <View style={styles.reviewSection}>
+              <View style={styles.reviewHeader}>
+                <View style={styles.reviewHeaderCopy}>
+                  <Text accessibilityRole="header" style={styles.sectionTitle}>
+                    Due for review
+                  </Text>
+                  <Text style={styles.reviewIntro}>
+                    Sources you marked ready for a local check-in.
+                  </Text>
+                </View>
+                <View
+                  accessible
+                  accessibilityLabel={`${dueReviewSources.length} ${
+                    dueReviewSources.length === 1 ? 'review' : 'reviews'
+                  } due`}
+                  style={styles.reviewCount}>
+                  <Text style={styles.reviewCountLabel}>{dueReviewSources.length}</Text>
+                </View>
+              </View>
+
+              <View style={styles.reviewList}>
+                {dueReviewSources.map((source) => {
+                  const domain = getDisplayDomain(source.url);
+                  const dueLabel = getReviewDueLabel(source.review!.dueAt);
+
+                  return (
+                    <Pressable
+                      accessibilityHint="Opens the local review check-in"
+                      accessibilityLabel={`Review ${source.label}, ${domain}, ${dueLabel}`}
+                      accessibilityRole="button"
+                      key={source.id}
+                      onPress={() => openReview(source.id)}
+                      style={({ pressed }) => [
+                        styles.reviewCard,
+                        pressed && styles.sourceCardPressed,
+                      ]}>
+                      <View style={styles.reviewCardCopy}>
+                        <Text style={styles.reviewDueLabel}>{dueLabel.toUpperCase()}</Text>
+                        <Text style={styles.reviewSourceLabel}>{source.label}</Text>
+                        <Text numberOfLines={1} style={styles.reviewDomain}>
+                          {domain}
+                        </Text>
+                      </View>
+                      <Text aria-hidden style={styles.reviewArrow}>
+                        →
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           <View style={styles.recentSection}>
             <View style={styles.sectionHeader}>
               <Text accessibilityRole="header" style={styles.sectionTitle}>
@@ -204,22 +295,22 @@ export default function HomeScreen() {
             {isLoading ? (
               <View
                 accessible
-                accessibilityLabel="Loading recent sources"
+                accessibilityLabel="Loading saved sources and due reviews"
                 accessibilityLiveRegion="polite"
                 accessibilityRole="progressbar"
                 accessibilityState={{ busy: true }}
                 style={styles.stateCard}>
                 <ActivityIndicator color={Brand.colors.plum} size="small" />
-                <Text style={styles.stateBody}>Loading your latest saves…</Text>
+                <Text style={styles.stateBody}>Loading your saved sources and review schedule…</Text>
               </View>
             ) : loadError !== null ? (
               <View style={styles.stateCard}>
                 <View accessibilityLiveRegion="polite" accessibilityRole="alert">
-                  <Text style={styles.stateTitle}>Recent sources are taking a moment.</Text>
+                  <Text style={styles.stateTitle}>Your saved sources are taking a moment.</Text>
                   <Text style={styles.stateBody}>{loadError}</Text>
                 </View>
                 <Pressable
-                  accessibilityHint="Tries to load recent sources again"
+                  accessibilityHint="Tries to load saved sources and due reviews again"
                   accessibilityRole="button"
                   onPress={() => void loadSources()}
                   style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}>
@@ -430,6 +521,83 @@ const styles = StyleSheet.create({
   buttonPressed: {
     opacity: 0.8,
     transform: [{ scale: 0.99 }],
+  },
+  reviewSection: {
+    gap: 13,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 14,
+  },
+  reviewHeaderCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  reviewIntro: {
+    color: Brand.colors.plumSoft,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  reviewCount: {
+    minWidth: 42,
+    minHeight: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Brand.colors.walnut,
+    borderRadius: 15,
+    paddingHorizontal: 10,
+  },
+  reviewCountLabel: {
+    color: Brand.colors.white,
+    fontFamily: Brand.fonts.rounded,
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  reviewList: {
+    gap: 10,
+  },
+  reviewCard: {
+    minHeight: 92,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: Brand.colors.cream,
+    borderColor: Brand.colors.walnut,
+    borderRadius: 22,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 15,
+  },
+  reviewCardCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  reviewDueLabel: {
+    color: Brand.colors.plum,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  reviewSourceLabel: {
+    color: Brand.colors.plum,
+    fontFamily: Brand.fonts.rounded,
+    fontSize: 18,
+    fontWeight: '800',
+    lineHeight: 23,
+  },
+  reviewDomain: {
+    color: Brand.colors.plumSoft,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  reviewArrow: {
+    color: Brand.colors.plum,
+    fontSize: 24,
+    fontWeight: '800',
   },
   recentSection: {
     gap: 13,
